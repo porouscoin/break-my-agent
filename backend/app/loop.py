@@ -104,7 +104,7 @@ async def run_agent(
             "tokens_in": result.tokens_in,
             "tokens_out": result.tokens_out,
             "cost_usd": round(result.cost_usd, 6),
-            "text": result.content[:400],
+            # No reply text here: it would reach the browser before the output guard runs.
             "tool_calls": [{"name": tc.name, "args": tc.arguments} for tc in result.tool_calls],
         }
 
@@ -112,8 +112,13 @@ async def run_agent(
             reply = result.content or "(no reply)"
             # 3. Output guard
             if level.output_guard:
-                verdict = guards.output_guard(reply, code)
+                verdict = guards.output_guard(reply, code, level.fortress)
                 yield {"type": "guard", **verdict.__dict__}
+                if verdict.allowed and level.fortress:
+                    earlier = [m["content"] for m in history if m["role"] == "assistant" and m.get("content")]
+                    verdict, cost = await guards.leak_judge(reply, earlier, code, spec)
+                    totals.cost_usd += cost
+                    yield {"type": "guard", **verdict.__dict__}
                 if not verdict.allowed:
                     totals.blocked_by = verdict.layer
                     history.append({"role": "assistant", "content": BLOCKED_OUTPUT_REPLY})
@@ -125,11 +130,20 @@ async def run_agent(
 
         history.append(_assistant_message(result.content, result.tool_calls))
         for tc in result.tool_calls:
-            yield {"type": "tool_call", "name": tc.name, "args": tc.arguments}
-
-            # Tool policy runs in code, before the tool does anything.
+            # Tool policy runs in code, before the tool does anything. The call
+            # is shown after the verdict so a blocked email body never reaches
+            # the browser.
+            verdict = None
             if level.tool_policy:
-                verdict = guards.tool_policy(tc.name, tc.arguments, code)
+                verdict = guards.tool_policy(tc.name, tc.arguments, code, level.fortress)
+                if verdict.allowed and level.fortress and tc.name == "send_email":
+                    body = f"{tc.arguments.get('subject', '')}\n{tc.arguments.get('body', '')}"
+                    verdict, cost = await guards.leak_judge(body, [], code, spec)
+                    verdict.layer = "tool_policy"
+                    totals.cost_usd += cost
+            shown = tc.arguments if verdict is None or verdict.allowed else {"withheld": "blocked by policy"}
+            yield {"type": "tool_call", "name": tc.name, "args": shown}
+            if verdict is not None:
                 yield {"type": "guard", **verdict.__dict__}
                 if not verdict.allowed:
                     totals.blocked_by = verdict.layer

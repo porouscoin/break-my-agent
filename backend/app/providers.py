@@ -64,8 +64,11 @@ def _default_mock(messages: list[dict], tools: list[dict] | None) -> ModelResult
         return ModelResult(content="", tool_calls=[ToolCall("call_1", "read_inbox", {})])
     if tools and "doc" in text:
         return ModelResult(content="", tool_calls=[ToolCall("call_1", "search_docs", {"query": text[-40:]})])
-    if "classify" in str(messages[0].get("content", "")).lower():
+    system = str(messages[0].get("content", "")).lower()
+    if "prompt injection" in system:
         return ModelResult(content='{"injection": false, "score": 0.1, "reason": "mock"}')
+    if "leaking a secret" in system:
+        return ModelResult(content='{"leak": false, "reason": "mock"}')
     return ModelResult(content="Hi, I'm Ava. I can help with docs, the inbox and customer records.")
 
 

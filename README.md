@@ -15,9 +15,9 @@ Everything is fake: the company, the inbox, the customers. Emails only go to a l
 | 2 | Input guard | Regex patterns plus a classifier model score each message before Ava sees it |
 | 3 | Output guard | Ava's reply is scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts |
 | 4 | Tool policy | Checked in code: email only to `@larkspur.test`, email bodies scanned, private customer fields hidden |
-| 5 | Quarantine | Inbox and doc text is read by a second model with no tools; Ava only sees its summary (a simple dual-LLM pattern) |
+| 5 | Fortress | Everything above, plus quarantine (inbox and doc text is read by a second model with no tools; Ava only sees its summary), a strict prompt, a censor that blocks any single part of the code, and a judge model that reads the whole conversation for hints. Built to hold |
 
-Each guard is good but not perfect on purpose, so every level can be beaten.
+Levels 1 to 4 are beatable on purpose. Level 5 is built to hold.
 
 ## How a message flows
 

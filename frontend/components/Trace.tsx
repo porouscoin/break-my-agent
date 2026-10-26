@@ -9,6 +9,7 @@ const LAYER: Record<string, string> = {
   input_guard: "Input guard",
   output_guard: "Output guard",
   tool_policy: "Tool policy",
+  leak_judge: "Leak judge",
 };
 
 function short(value: unknown, n = 160) {
