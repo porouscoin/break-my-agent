@@ -28,6 +28,7 @@ const LAYER_NAMES: Record<string, string> = {
   input_guard: "the input guard",
   output_guard: "the output guard",
   tool_policy: "the tool policy",
+  leak_judge: "the leak judge",
 };
 
 declare global {
