@@ -222,6 +222,12 @@ async def plant(body: PlantIn):
         ctx.planted_docs = (ctx.planted_docs + [doc])[-3:]
     else:
         raise HTTPException(400, "kind must be email or doc")
+    # Ava may have read the inbox earlier in the chat. Without this note she
+    # answers from that old read and never sees what was just planted.
+    where = "the shared inbox" if body.kind == "email" else "the company docs"
+    for history in s.histories.values():
+        if history:
+            history.append({"role": "system", "content": f"Something new was just added to {where}. Read it again before answering about it."})
     await store.save_session(s)
     return {"ok": True, "emails": len(ctx.planted_emails), "docs": len(ctx.planted_docs)}
 
