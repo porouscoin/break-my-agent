@@ -27,6 +27,7 @@ app = FastAPI(title="Break my agent", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.frontend_origin.split(",") if o.strip()],
+    allow_origin_regex=settings.frontend_origin_regex or None,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
