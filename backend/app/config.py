@@ -48,7 +48,7 @@ def model_registry() -> dict[str, ModelSpec]:
             id="qwen",
             label="Qwen (Groq, free)",
             provider="groq",
-            model=env("GROQ_MODEL", "qwen/qwen3-32b"),
+            model=env("GROQ_MODEL", "qwen/qwen3.6-27b"),
             base_url="https://api.groq.com/openai/v1",
             api_key=env("GROQ_API_KEY"),
             usd_per_m_in=0.0,
