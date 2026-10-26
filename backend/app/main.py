@@ -19,6 +19,9 @@ from .loop import RunTotals, run_agent
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # The codes are derived from SECRET_KEY, and the default is in the public repo.
+    if settings.secret_key == "dev-only-change-me" and any(m.provider != "mock" for m in MODELS.values()):
+        raise RuntimeError("Set SECRET_KEY before running with real model keys.")
     await store.load_spend_today()
     yield
 
