@@ -49,6 +49,14 @@ h2 { font-size: 15px; margin: 0; }
 .level:disabled { opacity: .45; cursor: not-allowed; }
 .defense { color: var(--muted); margin: 12px 0 16px; }
 .defense strong { color: var(--text); }
+.defense { margin-bottom: 8px; }
+.hints { margin: 0 0 16px; font-size: 14px; color: var(--muted); max-width: 820px; }
+.hint-line { margin: 0 0 6px; }
+.hint-tag { font-family: var(--mono); font-size: 11px; text-transform: uppercase; color: var(--warn); border: 1px solid var(--warn); border-radius: 4px; padding: 1px 6px; margin-right: 6px; }
+.solution { border-left: 2px solid var(--accent); padding-left: 12px; margin: 8px 0; color: var(--text); }
+.solution p { margin: 0 0 6px; }
+.hint-why { color: var(--muted); }
+.hint-actions button { font-size: 13px; padding: 4px 12px; }
 
 .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }

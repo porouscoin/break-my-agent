@@ -13,6 +13,7 @@ import {
   startSession,
   TraceEvent,
 } from "@/lib/api";
+import Hints from "./Hints";
 import Trace from "./Trace";
 
 type Msg = { role: "user" | "ava" | "system"; text: string; blockedBy?: string | null };
@@ -242,6 +243,7 @@ export default function Game() {
           <strong>Level {levelInfo.number} defense:</strong> {levelInfo.defense}
         </p>
       )}
+      {levelInfo && <Hints key={levelInfo.number} level={levelInfo.number} />}
 
       <section className="grid">
         <div className="panel chat">
