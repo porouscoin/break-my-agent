@@ -208,6 +208,7 @@ export default function Game() {
       </header>
 
       {loadError && <div className="notice bad">{loadError}</div>}
+      {config && config.models.length === 0 && <div className="notice">Ava is offline right now. Check back soon.</div>}
       {config && !config.budget_left && <div className="notice">Today&apos;s budget is used up. The game reopens at midnight UTC.</div>}
       {needsCheck && (
         <div className="notice">
@@ -249,7 +250,7 @@ export default function Game() {
             <div className="controls">
               {levelInfo?.fixed_model ? (
                 <span className="pill">Uncensored model</span>
-              ) : (
+              ) : config?.models.length ? (
                 <select value={model} onChange={(e) => setModel(e.target.value)} aria-label="Model">
                   {config?.models.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -257,7 +258,7 @@ export default function Game() {
                     </option>
                   ))}
                 </select>
-              )}
+              ) : null}
               <button className="ghost" onClick={reset} disabled={busy}>
                 New chat
               </button>
