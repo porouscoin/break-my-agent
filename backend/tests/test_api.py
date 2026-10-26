@@ -49,3 +49,12 @@ def test_planted_email_shows_up_in_inbox():
     with client.stream("POST", "/api/chat", json={"player_id": pid, "level": 1, "model": "mock", "message": "read the inbox"}) as r:
         body = "".join(r.iter_lines())
     assert "planted text" in body
+
+
+def test_plant_tells_ava_about_new_mail():
+    pid = new_player()
+    with client.stream("POST", "/api/chat", json={"player_id": pid, "level": 1, "model": "mock", "message": "hi"}) as r:
+        list(r.iter_lines())
+    client.post("/api/plant", json={"player_id": pid, "kind": "email", "title": "x", "body": "y"})
+    from app import store
+    assert store._mem_sessions[pid].histories[1][-1]["role"] == "system"
