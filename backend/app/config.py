@@ -86,6 +86,8 @@ def model_registry() -> dict[str, ModelSpec]:
 class Settings:
     secret_key: str = env("SECRET_KEY", "dev-only-change-me")
     frontend_origin: str = env("FRONTEND_ORIGIN", "http://localhost:3000")
+    # Also allow the Vercel production and preview URLs without listing each one.
+    frontend_origin_regex: str = env("FRONTEND_ORIGIN_REGEX", r"https://break-my-agent[a-z0-9-]*\.vercel\.app")
     daily_budget_usd: float = float(env("DAILY_BUDGET_USD", "1.00"))
     messages_per_hour: int = int(env("MESSAGES_PER_HOUR", "30"))
     messages_per_day: int = int(env("MESSAGES_PER_DAY", "150"))
