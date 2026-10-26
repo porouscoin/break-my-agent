@@ -76,6 +76,10 @@ Add real keys in `backend/.env` style environment variables (see `backend/.env.e
 
 ## Deploy
 
-- Backend: Railway, root directory `backend`. Config in `backend/railway.json`
+Both halves run on Vercel's free tier. The backend keeps no state in memory (sessions, rate limits and spend live in Supabase), so it works as a serverless function.
+
 - Database: Supabase. Run `backend/schema.sql` once in the SQL editor
-- Frontend: Vercel, root directory `frontend`, with `NEXT_PUBLIC_API_URL` pointing at the Railway URL
+- Backend: a Vercel project with root directory `backend`. Vercel finds the FastAPI app through `backend/pyproject.toml`. Set `SECRET_KEY`, the model keys, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
+- Frontend: a Vercel project with root directory `frontend`, with `NEXT_PUBLIC_API_URL` set to the backend URL. The backend accepts requests from `https://break-my-agent*.vercel.app` by default; set `FRONTEND_ORIGIN` for any other domain
+
+`backend/railway.json` is kept for running the backend as a long-lived server on Railway instead.

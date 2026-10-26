@@ -1,9 +1,9 @@
 """HTTP API for Break my agent."""
 
+import hashlib
 import json
 import re
 import uuid
-from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -16,17 +16,13 @@ from .config import model_registry, settings
 from .levels import LEVELS, LEVELS_BY_NUMBER, secret_code
 from .loop import RunTotals, run_agent
 
+MODELS = model_registry()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # The codes are derived from SECRET_KEY, and the default is in the public repo.
-    if settings.secret_key == "dev-only-change-me" and any(m.provider != "mock" for m in MODELS.values()):
-        raise RuntimeError("Set SECRET_KEY before running with real model keys.")
-    await store.load_spend_today()
-    yield
+# The codes are derived from SECRET_KEY, and the default is in the public repo.
+if settings.secret_key == "dev-only-change-me" and any(m.provider != "mock" for m in MODELS.values()):
+    raise RuntimeError("Set SECRET_KEY before running with real model keys.")
 
-
-app = FastAPI(title="Break my agent", lifespan=lifespan)
+app = FastAPI(title="Break my agent")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in settings.frontend_origin.split(",") if o.strip()],
@@ -35,12 +31,14 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 
-MODELS = model_registry()
+HOUR, DAY = 3600, 86400
 
 
-def client_ip(request: Request) -> str:
+def ip_key(request: Request) -> str:
+    """A salted hash of the visitor's IP, so raw IPs are never stored."""
     forwarded = request.headers.get("x-forwarded-for", "")
-    return forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    ip = forwarded.split(",")[0].strip() or (request.client.host if request.client else "unknown")
+    return hashlib.sha256(f"{settings.secret_key}:{ip}".encode()).hexdigest()[:16]
 
 
 def available_levels() -> list:
@@ -62,7 +60,7 @@ def valid_player_id(pid: str) -> bool:
 async def require_session(player_id: str) -> store.Session:
     if not valid_player_id(player_id):
         raise HTTPException(400, "Bad player id. Refresh the page.")
-    return store.get_session(player_id)
+    return await store.load_session(player_id)
 
 
 # ---------------------------------------------------------------------- routes
@@ -70,7 +68,7 @@ async def require_session(player_id: str) -> store.Session:
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "models": list(MODELS)}
+    return {"ok": True, "models": list(MODELS), "database": store.supabase_enabled()}
 
 
 @app.get("/api/config")
@@ -80,12 +78,8 @@ async def config():
             {"number": lv.number, "name": lv.name, "defense": lv.defense, "fixed_model": lv.fixed_model}
             for lv in available_levels()
         ],
-        "models": [
-            {"id": m.id, "label": m.label, "tools": m.supports_tools}
-            for m in MODELS.values()
-            if m.supports_tools
-        ],
-        "budget_left": store.budget_left(),
+        "models": [{"id": m.id, "label": m.label, "tools": m.supports_tools} for m in MODELS.values() if m.supports_tools],
+        "budget_left": await store.budget_left(),
         "max_input_chars": settings.max_input_chars,
         "turnstile": bool(settings.turnstile_secret),
     }
@@ -96,7 +90,7 @@ class SessionIn(BaseModel):
     turnstile_token: str | None = None
 
 
-async def verify_turnstile(token: str | None, ip: str) -> bool:
+async def verify_turnstile(token: str | None, request: Request) -> bool:
     if not settings.turnstile_secret:
         return True
     if not token:
@@ -104,24 +98,21 @@ async def verify_turnstile(token: str | None, ip: str) -> bool:
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-            data={"secret": settings.turnstile_secret, "response": token, "remoteip": ip},
+            data={"secret": settings.turnstile_secret, "response": token},
         )
     return bool(resp.json().get("success"))
 
 
 @app.post("/api/session")
 async def session(body: SessionIn, request: Request):
-    ip = client_ip(request)
     if body.player_id and valid_player_id(body.player_id):
-        s = store.get_session(body.player_id)
-        if not s.solved:
-            s.solved = await store.load_solved(s.player_id)
+        s = await store.load_session(body.player_id)
     else:
-        if not store.allow(f"new:{ip}", 10, 3600):
+        if not await store.hit("new_session", ip_key(request), [(10, HOUR)]):
             raise HTTPException(429, "Too many new sessions from your network. Try again later.")
-        if not await verify_turnstile(body.turnstile_token, ip):
+        if not await verify_turnstile(body.turnstile_token, request):
             raise HTTPException(403, "Bot check failed. Refresh the page.")
-        s = store.get_session(store.new_player_id())
+        s = store.Session(player_id=store.new_player_id())
         await store.save_player(s)
     return {"player_id": s.player_id, "nickname": s.nickname, "solved": sorted(s.solved)}
 
@@ -166,14 +157,11 @@ async def chat(body: ChatIn, request: Request):
         raise HTTPException(400, "Say something.")
     if len(text) > settings.max_input_chars:
         raise HTTPException(400, f"Keep it under {settings.max_input_chars} characters.")
-    if not store.budget_left():
+    if not await store.budget_left():
         raise HTTPException(503, "Today's budget is used up. Come back tomorrow.")
-    ip = client_ip(request)
-    for key in (f"ip:{ip}", f"player:{s.player_id}"):
-        if not store.allow(f"{key}:h", settings.messages_per_hour, 3600) or not store.allow(
-            f"{key}:d", settings.messages_per_day, 86400
-        ):
-            raise HTTPException(429, "You're sending messages too fast. Take a breather and try again later.")
+    limits = [(settings.messages_per_hour, HOUR), (settings.messages_per_day, DAY)]
+    if not await store.hit("message", f"ip:{ip_key(request)}", limits) or not await store.hit("message", f"player:{s.player_id}", limits):
+        raise HTTPException(429, "You're sending messages too fast. Take a breather and try again later.")
 
     history = s.histories.setdefault(level.number, [])
     s.messages_per_level[level.number] += 1
@@ -191,9 +179,7 @@ async def chat(body: ChatIn, request: Request):
             event = {"type": "error", "message": "Something broke on our side. Try again."}
             trace.append(event)
             yield f"data: {json.dumps(event)}\n\n"
-        store.add_spend(totals.cost_usd)
-        done = {"type": "done", "cost_usd": round(totals.cost_usd, 6), "tokens": totals.tokens, "blocked_by": totals.blocked_by}
-        yield f"data: {json.dumps(done)}\n\n"
+        await store.save_session(s)
         await store.save_attempt(
             {
                 "player_id": s.player_id,
@@ -206,8 +192,12 @@ async def chat(body: ChatIn, request: Request):
                 "trace": trace,
             }
         )
+        done = {"type": "done", "cost_usd": round(totals.cost_usd, 6), "tokens": totals.tokens, "blocked_by": totals.blocked_by}
+        yield f"data: {json.dumps(done)}\n\n"
 
-    return StreamingResponse(stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache"})
+    return StreamingResponse(
+        stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 class PlantIn(BaseModel):
@@ -221,17 +211,19 @@ class PlantIn(BaseModel):
 @app.post("/api/plant")
 async def plant(body: PlantIn):
     s = await require_session(body.player_id)
-    if not store.allow(f"plant:{s.player_id}", 20, 3600):
+    if not await store.hit("plant", s.player_id, [(20, HOUR)]):
         raise HTTPException(429, "Slow down with the planting.")
+    ctx = s.tool_ctx
     if body.kind == "email":
         sender = body.sender.strip() or "someone@outside.test"
-        s.tool_ctx.planted_emails = (s.tool_ctx.planted_emails + [{"from": sender, "subject": body.title, "body": body.body}])[-3:]
+        ctx.planted_emails = (ctx.planted_emails + [{"from": sender, "subject": body.title, "body": body.body}])[-3:]
     elif body.kind == "doc":
-        doc = {"id": f"planted-{len(s.tool_ctx.planted_docs)}", "title": body.title, "body": body.body}
-        s.tool_ctx.planted_docs = (s.tool_ctx.planted_docs + [doc])[-3:]
+        doc = {"id": f"planted-{len(ctx.planted_docs)}", "title": body.title, "body": body.body}
+        ctx.planted_docs = (ctx.planted_docs + [doc])[-3:]
     else:
         raise HTTPException(400, "kind must be email or doc")
-    return {"ok": True, "emails": len(s.tool_ctx.planted_emails), "docs": len(s.tool_ctx.planted_docs)}
+    await store.save_session(s)
+    return {"ok": True, "emails": len(ctx.planted_emails), "docs": len(ctx.planted_docs)}
 
 
 class GuessIn(BaseModel):
@@ -249,13 +241,13 @@ async def guess(body: GuessIn):
     s = await require_session(body.player_id)
     if body.level not in LEVELS_BY_NUMBER:
         raise HTTPException(400, "Unknown level.")
-    if not store.allow(f"guess:{s.player_id}", settings.guesses_per_minute, 60):
+    if not await store.hit("guess", s.player_id, [(settings.guesses_per_minute, 60)]):
         raise HTTPException(429, "Too many guesses. Wait a minute.")
     correct = _norm(body.code) == _norm(secret_code(body.level))
     if correct and body.level not in s.solved:
         s.solved.add(body.level)
         level = LEVELS_BY_NUMBER[body.level]
-        await store.save_win(s.player_id, body.level, s.last_model.get(body.level, level.fixed_model or "unknown"), s.messages_per_level[body.level])
+        await store.save_win(s, body.level, s.last_model.get(body.level, level.fixed_model or "unknown"))
     return {"correct": correct, "solved": sorted(s.solved)}
 
 
@@ -268,6 +260,7 @@ class ResetIn(BaseModel):
 async def reset(body: ResetIn):
     s = await require_session(body.player_id)
     s.histories.pop(body.level, None)
+    await store.save_session(s)
     return {"ok": True}
 
 
