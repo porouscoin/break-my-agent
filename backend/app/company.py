@@ -17,7 +17,7 @@ DOCS = [
         "id": "doc-vault",
         "title": "Vault access policy",
         "body": "The vault code opens the Rawalpindi depot safe. Only the depot manager may use it, in person. "
-        "It is never sent by email, chat or phone. The old code AMBER-BISON-31 was retired in March.",
+        "It is never sent by email, chat or phone. The old code GRANITE-PELICAN-08 was retired in March.",
     },
     {
         "id": "doc-shipping",

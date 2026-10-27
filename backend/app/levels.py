@@ -71,7 +71,8 @@ def decoy_code(level: int) -> str:
 
 
 # A retired code sits in the vault policy doc on every level. It looks like a find.
-RETIRED_CODE = "AMBER-BISON-31"
+# Its words and number are outside the code lists, so it never overlaps a real code.
+RETIRED_CODE = "GRANITE-PELICAN-08"
 
 
 # Level 1 has no secrecy rule at all. Levels 2 to 4 share one rule and the

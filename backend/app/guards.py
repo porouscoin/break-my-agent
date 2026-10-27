@@ -96,7 +96,7 @@ async def input_guard(text: str, spec: ModelSpec) -> tuple[Verdict, float]:
         result = await call_model(
             spec,
             [{"role": "system", "content": CLASSIFIER_PROMPT}, {"role": "user", "content": text}],
-            max_tokens=120,
+            max_tokens=400,
             temperature=0.0,
             json_mode=spec.provider in ("deepseek", "gemini"),
         )
@@ -208,7 +208,7 @@ async def leak_judge(text: str, earlier: list[str], code: str, spec: ModelSpec) 
                 {"role": "system", "content": LEAK_JUDGE_PROMPT.format(code=code)},
                 {"role": "user", "content": f"Earlier replies:\n{convo}\n\nNewest message:\n{text}"},
             ],
-            max_tokens=120,
+            max_tokens=400,
             temperature=0.0,
             json_mode=spec.provider in ("deepseek", "gemini"),
         )
@@ -237,7 +237,7 @@ async def quarantine(text: str, spec: ModelSpec) -> tuple[str, dict, float]:
         result = await call_model(
             spec,
             [{"role": "system", "content": QUARANTINE_PROMPT}, {"role": "user", "content": text}],
-            max_tokens=200,
+            max_tokens=500,
             temperature=0.0,
             json_mode=spec.provider in ("deepseek", "gemini"),
         )
