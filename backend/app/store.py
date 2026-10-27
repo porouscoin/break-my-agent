@@ -77,11 +77,11 @@ async def _sb(method: str, path: str, prefer: str = "", **kwargs):
     global _client
     if _client is None:
         _client = httpx.AsyncClient(timeout=10)
-    headers = {
-        "apikey": settings.supabase_key,
-        "Authorization": f"Bearer {settings.supabase_key}",
-        "Content-Type": "application/json",
-    }
+    headers = {"apikey": settings.supabase_key, "Content-Type": "application/json"}
+    # A legacy service_role key is a JWT and goes in Authorization too. A new
+    # sb_secret_ key is not a JWT, so it only goes in apikey.
+    if settings.supabase_key.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {settings.supabase_key}"
     if prefer:
         headers["Prefer"] = prefer
     try:
