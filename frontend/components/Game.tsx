@@ -145,11 +145,7 @@ export default function Game() {
   const levelTurns = turns[level] || [];
   const levelCount = config?.levels.filter((l) => l.number > 0).length || 5;
   const solvedCount = solved.filter((n) => n > 0).length;
-  const SUGGESTIONS = [
-    { title: "What can you do?", sub: "Get a feel for Ava's tools" },
-    { title: "Read me the latest emails.", sub: "Watch a tool call in the trace" },
-    { title: "Search the docs for the vault policy.", sub: "Find out what the company says" },
-  ];
+  const SUGGESTIONS = ["What can you do?", "Read me the latest emails."];
 
   const addMsg = (lv: number, m: Msg) => setMessages((prev) => ({ ...prev, [lv]: [...(prev[lv] || []), m] }));
 
@@ -251,7 +247,7 @@ export default function Game() {
       <aside className="nav">
         <div className="nav-top">
           <a className="brand" href="#">
-            <Logo size={24} />
+            <Logo size={28} />
             <span>Break my agent</span>
           </a>
           <button className="icon-btn only-mobile" onClick={() => setNavOpen(false)} aria-label="Close menu">
@@ -273,9 +269,9 @@ export default function Game() {
                   onClick={() => pickLevel(l.number)}
                   title={open ? l.defense : `Beat level ${l.number - 1} to unlock`}
                 >
-                  <span className={`nav-num ${done ? "done" : ""}`}>{done ? <Check size={12} /> : l.number}</span>
+                  <span className={`nav-num ${done ? "done" : ""}`}>{done ? <Check size={14} /> : l.number}</span>
                   <span className="nav-text">{l.name}</span>
-                  {!open && <Lock size={13} className="nav-trail" />}
+                  {!open && <Lock size={15} className="nav-trail" />}
                 </button>
               );
             })}
@@ -290,22 +286,22 @@ export default function Game() {
 
         <div className="nav-bottom">
           <button className="nav-item" onClick={() => setDialog("board")}>
-            <Trophy size={15} className="nav-icon" />
+            <Trophy size={18} className="nav-icon" />
             <span className="nav-text">Leaderboard</span>
           </button>
           <button className="nav-item" onClick={() => setDialog("how")}>
-            <Book size={15} className="nav-icon" />
+            <Book size={18} className="nav-icon" />
             <span className="nav-text">How it works</span>
           </button>
           <a className="nav-item" href={GITHUB} target="_blank" rel="noreferrer">
-            <Github size={15} className="nav-icon" />
+            <Github size={18} className="nav-icon" />
             <span className="nav-text">Source code</span>
           </a>
           <div className="progress">
             <div className="progress-row">
               <span>Progress</span>
-              <span className="mono">
-                {solvedCount}/{levelCount} levels · {quests.length}/{config?.quests.length || 5} quests
+              <span>
+                {solvedCount} of {levelCount} levels
               </span>
             </div>
             <span className="meter">
@@ -320,7 +316,7 @@ export default function Game() {
       <main className="main">
         <header className="topbar">
           <button className="icon-btn only-mobile" onClick={() => setNavOpen(true)} aria-label="Open menu">
-            <Menu size={18} />
+            <Menu size={20} />
           </button>
           <div className="topbar-title">
             <span className="crumb">Level {levelInfo?.number ?? level}</span>
@@ -329,7 +325,7 @@ export default function Game() {
           </div>
           <div className="topbar-actions">
             <button className="btn ghost" onClick={reset} disabled={busy} title="Clear this level's chat">
-              <Rotate size={14} />
+              <Rotate size={16} />
               <span className="hide-sm">New chat</span>
             </button>
             <button
@@ -338,7 +334,7 @@ export default function Game() {
               aria-label="Toggle the live trace"
               title="Live trace"
             >
-              <PanelRight size={17} />
+              <PanelRight size={19} />
             </button>
           </div>
         </header>
@@ -357,29 +353,14 @@ export default function Game() {
           <div className="column">
             {levelMsgs.length === 0 ? (
               <div className="greeting">
-                <p className="greeting-kicker">
-                  Level {levelInfo?.number ?? level} · {levelInfo?.name}
-                </p>
                 <h1>Get Ava to leak the vault code.</h1>
                 <p className="greeting-sub">{levelInfo?.defense}</p>
-                <div className="chips">
-                  {(levelInfo?.defenses?.length ? levelInfo.defenses : ["No defenses"]).map((d) => (
-                    <span key={d} className="chip">
-                      {d}
-                    </span>
-                  ))}
-                </div>
                 <div className="suggestions">
                   {SUGGESTIONS.map((t) => (
-                    <button key={t.title} className="suggestion" onClick={() => setInput(t.title)}>
-                      <span>{t.title}</span>
-                      <span className="suggestion-sub">{t.sub}</span>
+                    <button key={t} className="suggestion" onClick={() => setInput(t)}>
+                      {t}
                     </button>
                   ))}
-                  <button className="suggestion" onClick={() => setPlanting("email")}>
-                    <span>Plant an email</span>
-                    <span className="suggestion-sub">Hide instructions where Ava will read them</span>
-                  </button>
                 </div>
               </div>
             ) : (
@@ -429,7 +410,7 @@ export default function Game() {
                 submitGuess();
               }}
             >
-              <Key size={15} className="code-icon" />
+              <Key size={18} className="code-icon" />
               <label htmlFor="code" className="sr-only">
                 Vault code
               </label>
@@ -452,7 +433,7 @@ export default function Game() {
             <div className={`hints-pop ${hintsOpen ? "open" : ""}`} role="dialog" aria-label="Hints" aria-hidden={!hintsOpen}>
               <div className="hints-pop-head">
                 <span>
-                  <Bulb size={15} /> Hints for level {levelInfo.number}
+                  <Bulb size={17} /> Hints for level {levelInfo.number}
                 </span>
                 <button className="icon-btn" onClick={() => setHintsOpen(false)} aria-label="Close hints">
                   <X size={15} />
@@ -496,7 +477,7 @@ export default function Game() {
                 {levelInfo && levelInfo.number > 0 && (
                   <div className="menu-anchor">
                     <button type="button" className="tool-btn" onClick={() => setPlantMenu(!plantMenu)} aria-label="Plant content" title="Plant an email or doc">
-                      <Plus size={16} />
+                      <Plus size={19} />
                     </button>
                     {plantMenu && (
                       <>
@@ -555,7 +536,7 @@ export default function Game() {
               </div>
               <div className="composer-right">
                 <button type="submit" className="send" disabled={busy || !input.trim() || !playerId} aria-label="Send">
-                  <ArrowUp size={16} />
+                  <ArrowUp size={19} />
                 </button>
                 <button
                   type="button"
@@ -565,14 +546,11 @@ export default function Game() {
                   aria-expanded={hintsOpen}
                   title="Hints"
                 >
-                  <Bulb size={16} />
+                  <Bulb size={19} />
                 </button>
               </div>
             </div>
           </form>
-          <p className="disclaimer">
-            Everything here is fake: the company, the inbox and the customers. Built by <a href="https://ziyadhisham.com">Ziyad Hisham</a>.
-          </p>
         </div>
       </main>
 
@@ -580,7 +558,7 @@ export default function Game() {
       <aside className="panel" aria-label="Live trace">
         <div className="panel-head">
           <div className="panel-title">
-            <Pulse size={15} /> Live trace
+            <Pulse size={17} /> Trace
           </div>
           <button className="icon-btn" onClick={() => setPanelOpen(false)} aria-label="Close panel">
             <X size={16} />
@@ -640,10 +618,7 @@ export default function Game() {
 
       {dialog === "how" && (
         <Dialog title="How it works" onClose={() => setDialog(null)} wide>
-          <p className="dialog-sub">
-            Ava is a real agent loop: a model that calls tools on fake company data. Every message passes through the defenses below, and the
-            trace shows each step.
-          </p>
+          <p className="dialog-sub">Ava is a real agent: a model that calls tools on fake company data. Your messages pass through these defenses.</p>
           <ol className="steps">
             <li>
               <strong>Input guard</strong>
@@ -666,8 +641,22 @@ export default function Game() {
               <span>On level 5 a judge model rereads the chat for hints. From level 3, Ava may hand you a decoy code.</span>
             </li>
           </ol>
+          {config && config.quests.length > 0 && (
+            <>
+              <h3 className="dialog-h3">Side quests</h3>
+              <ul className="quest-goals">
+                {config.quests.map((q) => (
+                  <li key={q.id}>
+                    <strong>{q.name}</strong>
+                    <span>{quests.includes(q.id) ? q.lesson : q.goal}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <p className="dialog-foot">
-            Built with a hand-written Python agent harness. <a href={GITHUB}>Read the source</a>.
+            Everything is fake: the company, the inbox and the customers. Built by <a href="https://ziyadhisham.com">Ziyad Hisham</a> with a
+            hand-written Python agent harness. <a href={GITHUB}>Read the source</a>.
           </p>
         </Dialog>
       )}

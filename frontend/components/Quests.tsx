@@ -19,11 +19,8 @@ export default function Quests({ quests, done }: { quests: QuestInfo[]; done: st
           const got = done.includes(q.id);
           return (
             <li key={q.id} className={got ? "got" : ""} title={got ? q.lesson : q.goal}>
-              <span className="quest-icon">{got ? <CheckCircle size={15} /> : <Circle size={15} />}</span>
-              <span className="quest-text">
-                <strong>{q.name}</strong>
-                <span>{got ? q.lesson : q.goal}</span>
-              </span>
+              <span className="quest-icon">{got ? <CheckCircle size={18} /> : <Circle size={18} />}</span>
+              <span className="quest-text">{q.name}</span>
             </li>
           );
         })}
