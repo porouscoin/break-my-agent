@@ -8,9 +8,9 @@ export default function Quests({ quests, done }: { quests: QuestInfo[]; done: st
   const count = quests.filter((q) => done.includes(q.id)).length;
   return (
     <div className="quests">
-      <div className="side-label">
+      <div className="nav-label">
         Side quests
-        <span className="side-count">
+        <span className="nav-count">
           {count}/{quests.length}
         </span>
       </div>
@@ -18,7 +18,7 @@ export default function Quests({ quests, done }: { quests: QuestInfo[]; done: st
         {quests.map((q) => {
           const got = done.includes(q.id);
           return (
-            <li key={q.id} className={got ? "got" : ""}>
+            <li key={q.id} className={got ? "got" : ""} title={got ? q.lesson : q.goal}>
               <span className="quest-icon">{got ? <CheckCircle size={15} /> : <Circle size={15} />}</span>
               <span className="quest-text">
                 <strong>{q.name}</strong>
