@@ -21,12 +21,45 @@ class ModelSpec:
     supports_tools: bool = True
 
 
+# Models offered on Groq's free tier, all on one GROQ_API_KEY. The short id is
+# what the frontend sends; the label is what visitors see in the dropdown.
+GROQ_CATALOG = {
+    "qwen/qwen3.8-27b": ("qwen", "Qwen3.8 27B"),
+    "openai/gpt-oss-120b": ("gpt-oss-120b", "GPT-OSS 120B"),
+    "openai/gpt-oss-20b": ("gpt-oss-20b", "GPT-OSS 20B"),
+    "moonshotai/kimi-k2-instruct-0905": ("kimi-k2", "Kimi K2"),
+    "meta-llama/llama-4-scout-17b-16e-instruct": ("llama-4-scout", "Llama 4 Scout"),
+}
+DEFAULT_GROQ_MODELS = "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b,moonshotai/kimi-k2-instruct-0905,meta-llama/llama-4-scout-17b-16e-instruct"
+
+
+def groq_models() -> list[ModelSpec]:
+    """One spec per model in GROQ_MODELS (comma separated)."""
+    names = [n.strip() for n in env("GROQ_MODELS", DEFAULT_GROQ_MODELS).split(",") if n.strip()]
+    specs = []
+    for name in names:
+        short, label = GROQ_CATALOG.get(name, (name.split("/")[-1], name.split("/")[-1]))
+        specs.append(
+            ModelSpec(
+                id=short,
+                label=label,
+                provider="groq",
+                model=name,
+                base_url="https://api.groq.com/openai/v1",
+                api_key=env("GROQ_API_KEY"),
+                usd_per_m_in=0.0,
+                usd_per_m_out=0.0,
+            )
+        )
+    return specs
+
+
 def model_registry() -> dict[str, ModelSpec]:
     """Only models whose API key is set are offered to visitors."""
     specs = [
         ModelSpec(
             id="deepseek",
-            label="DeepSeek Flash",
+            label=env("DEEPSEEK_LABEL", "DeepSeek V3"),
             provider="deepseek",
             model=env("DEEPSEEK_MODEL", "deepseek-chat"),
             base_url="https://api.deepseek.com/v1",
@@ -36,23 +69,13 @@ def model_registry() -> dict[str, ModelSpec]:
         ),
         ModelSpec(
             id="gemini",
-            label="Gemini Flash",
+            label=env("GEMINI_LABEL", "Gemini 2.5 Flash"),
             provider="gemini",
             model=env("GEMINI_MODEL", "gemini-2.5-flash"),
             base_url="https://generativelanguage.googleapis.com/v1beta/openai",
             api_key=env("GEMINI_API_KEY"),
             usd_per_m_in=float(env("GEMINI_PRICE_IN", "0.30")),
             usd_per_m_out=float(env("GEMINI_PRICE_OUT", "2.50")),
-        ),
-        ModelSpec(
-            id="qwen",
-            label="Qwen (Groq, free)",
-            provider="groq",
-            model=env("GROQ_MODEL", "qwen/qwen3.8-27b"),
-            base_url="https://api.groq.com/openai/v1",
-            api_key=env("GROQ_API_KEY"),
-            usd_per_m_in=0.0,
-            usd_per_m_out=0.0,
         ),
         ModelSpec(
             id="uncensored",
@@ -66,6 +89,7 @@ def model_registry() -> dict[str, ModelSpec]:
             supports_tools=False,
         ),
     ]
+    specs += groq_models()
     if env("ENABLE_MOCK_MODEL") == "1":
         specs.append(
             ModelSpec(
