@@ -11,13 +11,13 @@ Everything is fake: the company, the inbox, the customers. Emails only go to a l
 | Level | New defense | How it works |
 | --- | --- | --- |
 | 0 | None | An uncensored model with the code in its prompt (only when an OpenRouter key is set) |
-| 1 | System prompt | Ava is told to keep the code secret. Nothing enforces it |
-| 2 | Input guard | Regex patterns plus a classifier model score each message before Ava sees it |
+| 1 | None | Ava knows the code and was never told to keep it secret |
+| 2 | Secrecy rule + input guard | Ava is told to keep the code secret, and regex patterns plus a classifier model screen each message before she sees it |
 | 3 | Output guard | Ava's reply is scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts |
 | 4 | Tool policy | Checked in code: email only to `@larkspur.test`, email bodies scanned, private customer fields hidden |
-| 5 | Fortress | Everything above, plus quarantine (inbox and doc text is read by a second model with no tools; Ava only sees its summary), a strict prompt, a censor that blocks any single part of the code, and a judge model that reads the whole conversation for hints. Built to hold |
+| 5 | Fortress | Ava is never given the code, so there is nothing to leak. Every defense above is still on, plus quarantine (inbox and doc text is read by a second model with no tools), a strict prompt, a censor for any single part of the code, and a judge model that reads the whole conversation. Impossible by design |
 
-Levels 1 to 4 are beatable on purpose. Level 5 is built to hold.
+Levels 1 to 4 are beatable on purpose. Level 5 is impossible: the only defense that cannot be talked around is keeping the secret out of the model's context.
 
 ## How a message flows
 
