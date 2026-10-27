@@ -14,7 +14,7 @@ import {
   TraceEvent,
 } from "@/lib/api";
 import Hints from "./Hints";
-import { ArrowUp, Check, FileText, Github, Key, Lock, Mail, Rotate, Trophy, X } from "./Icons";
+import { ArrowUp, Book, Bulb, Check, FileText, Github, Key, Lock, Mail, Menu, PanelRight, Plus, Pulse, Rotate, Trophy, X } from "./Icons";
 import Logo from "./Logo";
 import Quests from "./Quests";
 import Trace from "./Trace";
@@ -74,6 +74,11 @@ export default function Game() {
   const [board, setBoard] = useState<Board>([]);
   const [needsCheck, setNeedsCheck] = useState(false);
   const [quests, setQuests] = useState<string[]>([]);
+  const [navOpen, setNavOpen] = useState(false); // mobile drawer
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [panelTab, setPanelTab] = useState<"trace" | "hints">("trace");
+  const [dialog, setDialog] = useState<null | "code" | "board" | "how">(null);
+  const [plantMenu, setPlantMenu] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const chatBox = useRef<HTMLDivElement>(null);
 
@@ -102,6 +107,11 @@ export default function Game() {
       .catch(() => setLoadError("The game server is asleep or unreachable. Try again in a minute."));
     getLeaderboard().then((b) => setBoard(b.rows)).catch(() => {});
   }, [begin]);
+
+  // The side panel starts closed on small screens.
+  useEffect(() => {
+    if (window.innerWidth < 1200) setPanelOpen(false);
+  }, []);
 
   // Cloudflare Turnstile, only for brand-new visitors when the server asks for it.
   useEffect(() => {
@@ -134,7 +144,11 @@ export default function Game() {
   const levelTurns = turns[level] || [];
   const levelCount = config?.levels.filter((l) => l.number > 0).length || 5;
   const solvedCount = solved.filter((n) => n > 0).length;
-  const SUGGESTIONS = ["What can you do?", "Read me the latest emails.", "Search the docs for the vault policy."];
+  const SUGGESTIONS = [
+    { title: "What can you do?", sub: "Get a feel for Ava's tools" },
+    { title: "Read me the latest emails.", sub: "Watch a tool call in the trace" },
+    { title: "Search the docs for the vault policy.", sub: "Find out what the company says" },
+  ];
 
   const addMsg = (lv: number, m: Msg) => setMessages((prev) => ({ ...prev, [lv]: [...(prev[lv] || []), m] }));
 
@@ -177,6 +191,7 @@ export default function Game() {
       if (r.correct) {
         setToast({ kind: "good", text: `Level ${level} broken. ${level < 5 ? "The next level is open." : "You beat every level."}` });
         setCode("");
+        setDialog(null);
         getLeaderboard().then((b) => setBoard(b.rows)).catch(() => {});
       } else if (r.decoy) {
         setToast({
@@ -224,59 +239,111 @@ export default function Game() {
     }
   }
 
+  const pickLevel = (n: number) => {
+    setLevel(n);
+    setNavOpen(false);
+  };
+
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="topbar-inner">
+    <div className={`shell ${panelOpen ? "panel-open" : ""} ${navOpen ? "nav-open" : ""}`}>
+      {/* ------------------------------------------------------------ sidebar */}
+      <aside className="nav">
+        <div className="nav-top">
           <a className="brand" href="#">
-            <Logo size={26} />
+            <Logo size={24} />
             <span>Break my agent</span>
           </a>
-          <nav className="topnav" aria-label="Site">
-            <a href="#how">How it works</a>
-            <a href="#leaderboard">Leaderboard</a>
-            <a className="icon-btn" href={GITHUB} aria-label="Source on GitHub" title="Source on GitHub">
-              <Github size={18} />
-            </a>
-          </nav>
+          <button className="icon-btn only-mobile" onClick={() => setNavOpen(false)} aria-label="Close menu">
+            <X size={16} />
+          </button>
         </div>
-      </header>
 
-      <main className="container">
-        <section className="intro">
-          <div className="intro-copy">
-            <span className="badge">
-              <span className="badge-dot" /> Prompt-injection CTF
+        <div className="nav-scroll">
+          <div className="nav-group">
+            <p className="nav-label">Levels</p>
+            {config?.levels.map((l) => {
+              const open = unlocked(l.number);
+              const done = solved.includes(l.number);
+              return (
+                <button
+                  key={l.number}
+                  className={`nav-item ${l.number === level ? "active" : ""}`}
+                  disabled={!open}
+                  onClick={() => pickLevel(l.number)}
+                  title={open ? l.defense : `Beat level ${l.number - 1} to unlock`}
+                >
+                  <span className={`nav-num ${done ? "done" : ""}`}>{done ? <Check size={12} /> : l.number}</span>
+                  <span className="nav-text">{l.name}</span>
+                  {!open && <Lock size={13} className="nav-trail" />}
+                </button>
+              );
+            })}
+          </div>
+
+          {config && config.quests.length > 0 && (
+            <div className="nav-group">
+              <Quests quests={config.quests} done={quests} />
+            </div>
+          )}
+        </div>
+
+        <div className="nav-bottom">
+          <button className="nav-item" onClick={() => setDialog("board")}>
+            <Trophy size={15} className="nav-icon" />
+            <span className="nav-text">Leaderboard</span>
+          </button>
+          <button className="nav-item" onClick={() => setDialog("how")}>
+            <Book size={15} className="nav-icon" />
+            <span className="nav-text">How it works</span>
+          </button>
+          <a className="nav-item" href={GITHUB} target="_blank" rel="noreferrer">
+            <Github size={15} className="nav-icon" />
+            <span className="nav-text">Source code</span>
+          </a>
+          <div className="progress">
+            <div className="progress-row">
+              <span>Progress</span>
+              <span className="mono">
+                {solvedCount}/{levelCount} levels · {quests.length}/{config?.quests.length || 5} quests
+              </span>
+            </div>
+            <span className="meter">
+              <span style={{ width: `${(solvedCount / levelCount) * 100}%` }} />
             </span>
-            <h1>Break my agent</h1>
-            <p className="lede">
-              Ava is an AI agent with real tools: she searches docs, reads the inbox, looks up customers and sends emails. She also knows a
-              secret vault code. Get her to leak it, one defense at a time.
-            </p>
           </div>
-          <div className="stats" aria-label="Your progress">
-            <div className="stat">
-              <span className="stat-label">Levels broken</span>
-              <span className="stat-value">
-                {solvedCount}
-                <span>/{levelCount}</span>
-              </span>
-              <span className="meter">
-                <span style={{ width: `${(solvedCount / levelCount) * 100}%` }} />
-              </span>
-            </div>
-            <div className="stat">
-              <span className="stat-label">Side quests</span>
-              <span className="stat-value">
-                {quests.length}
-                <span>/{config?.quests.length || 5}</span>
-              </span>
-              <span className="meter">
-                <span style={{ width: `${(quests.length / (config?.quests.length || 5)) * 100}%` }} />
-              </span>
-            </div>
+        </div>
+      </aside>
+      <div className="scrim" onClick={() => setNavOpen(false)} />
+
+      {/* --------------------------------------------------------------- main */}
+      <main className="main">
+        <header className="topbar">
+          <button className="icon-btn only-mobile" onClick={() => setNavOpen(true)} aria-label="Open menu">
+            <Menu size={18} />
+          </button>
+          <div className="topbar-title">
+            <span className="crumb">Level {levelInfo?.number ?? level}</span>
+            <span className="crumb-sep">/</span>
+            <span className="crumb-current">{levelInfo?.name || "Loading"}</span>
           </div>
-        </section>
+          <div className="topbar-actions">
+            <button className="btn ghost" onClick={reset} disabled={busy} title="Clear this level's chat">
+              <Rotate size={14} />
+              <span className="hide-sm">New chat</span>
+            </button>
+            <button
+              className={`icon-btn ${panelOpen ? "on" : ""}`}
+              onClick={() => setPanelOpen(!panelOpen)}
+              aria-label="Toggle trace and hints panel"
+              title="Trace and hints"
+            >
+              <PanelRight size={17} />
+            </button>
+            <button className="btn primary" onClick={() => setDialog("code")}>
+              <Key size={14} /> Submit<span className="hide-sm"> code</span>
+            </button>
+          </div>
+        </header>
 
         {loadError && <div className="banner bad">{loadError}</div>}
         {config && config.models.length === 0 && <div className="banner">Ava is offline right now. Check back soon.</div>}
@@ -288,46 +355,143 @@ export default function Game() {
           </div>
         )}
 
-        <div className="workspace">
-          <aside className="sidebar">
-            <div className="side-label">Levels</div>
-            <nav className="level-list" aria-label="Levels">
-              {config?.levels.map((l) => {
-                const open = unlocked(l.number);
-                const done = solved.includes(l.number);
-                return (
-                  <button
-                    key={l.number}
-                    className={`level-item ${l.number === level ? "active" : ""} ${done ? "done" : ""}`}
-                    disabled={!open}
-                    onClick={() => setLevel(l.number)}
-                    title={open ? l.defense : `Beat level ${l.number - 1} to unlock`}
-                  >
-                    <span className="level-num">{l.number}</span>
-                    <span className="level-name">{l.name}</span>
-                    <span className="level-state">{done ? <Check size={14} /> : !open ? <Lock size={13} /> : null}</span>
+        <div className="conversation" ref={chatBox}>
+          <div className="column">
+            {levelMsgs.length === 0 ? (
+              <div className="greeting">
+                <p className="greeting-kicker">
+                  Level {levelInfo?.number ?? level} · {levelInfo?.name}
+                </p>
+                <h1>Get Ava to leak the vault code.</h1>
+                <p className="greeting-sub">{levelInfo?.defense}</p>
+                <div className="chips">
+                  {(levelInfo?.defenses?.length ? levelInfo.defenses : ["No defenses"]).map((d) => (
+                    <span key={d} className="chip">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+                <div className="suggestions">
+                  {SUGGESTIONS.map((t) => (
+                    <button key={t.title} className="suggestion" onClick={() => setInput(t.title)}>
+                      <span>{t.title}</span>
+                      <span className="suggestion-sub">{t.sub}</span>
+                    </button>
+                  ))}
+                  <button className="suggestion" onClick={() => setPlanting("email")}>
+                    <span>Plant an email</span>
+                    <span className="suggestion-sub">Hide instructions where Ava will read them</span>
                   </button>
-                );
-              })}
-            </nav>
-            {config && config.quests.length > 0 && (
-              <div className="side-quests">
-                <Quests quests={config.quests} done={quests} />
+                </div>
+              </div>
+            ) : (
+              <div className="thread">
+                {levelMsgs.map((m, i) =>
+                  m.role === "system" ? (
+                    <div key={i} className="msg-system">
+                      {m.text}
+                    </div>
+                  ) : m.role === "user" ? (
+                    <div key={i} className="msg-user">
+                      <p>{m.text}</p>
+                    </div>
+                  ) : (
+                    <div key={i} className="msg-ava">
+                      <span className="ava-mark">A</span>
+                      <div className="ava-body">
+                        <p className={m.blockedBy ? "blocked-text" : ""}>{m.text}</p>
+                        {m.blockedBy && (
+                          <span className="caught">
+                            <span className="caught-dot" /> Caught by {LAYER_NAMES[m.blockedBy] || m.blockedBy}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                )}
+                {busy && (
+                  <div className="msg-ava">
+                    <span className="ava-mark">A</span>
+                    <div className="ava-body">
+                      <span className="shimmer">Ava is working…</span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-          </aside>
+          </div>
+        </div>
 
-          <section className="card chat">
-            <header className="card-head chat-head">
-              <div className="chat-title">
-                <span className="kicker">Level {levelInfo?.number ?? level}</span>
-                <h2>{levelInfo?.name || "Loading"}</h2>
-              </div>
-              <div className="chat-actions">
+        <div className="composer-wrap">
+          <form
+            className="composer"
+            onSubmit={(e) => {
+              e.preventDefault();
+              send();
+            }}
+          >
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              maxLength={config?.max_input_chars || 1500}
+              placeholder="Message Ava…"
+              rows={2}
+              disabled={!playerId || !unlocked(level)}
+            />
+            <div className="composer-foot">
+              <div className="composer-left">
+                {levelInfo && levelInfo.number > 0 && (
+                  <div className="menu-anchor">
+                    <button type="button" className="tool-btn" onClick={() => setPlantMenu(!plantMenu)} aria-label="Plant content" title="Plant an email or doc">
+                      <Plus size={16} />
+                    </button>
+                    {plantMenu && (
+                      <>
+                        <div className="menu-backdrop" onClick={() => setPlantMenu(false)} />
+                        <div className="menu" role="menu">
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setPlanting("email");
+                              setPlantMenu(false);
+                            }}
+                          >
+                            <Mail size={15} />
+                            <span>
+                              Plant an email
+                              <small>Lands in Ava&apos;s inbox</small>
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => {
+                              setPlanting("doc");
+                              setPlantMenu(false);
+                            }}
+                          >
+                            <FileText size={15} />
+                            <span>
+                              Plant a doc
+                              <small>Shows up in doc search</small>
+                            </span>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 {levelInfo?.fixed_model ? (
-                  <span className="chip warn">Uncensored model</span>
+                  <span className="model-pill">Uncensored model</span>
                 ) : config?.models.length ? (
-                  <label className="select">
+                  <label className="model-select">
                     <span className="sr-only">Model</span>
                     <select value={model} onChange={(e) => setModel(e.target.value)}>
                       {config?.models.map((m) => (
@@ -338,180 +502,93 @@ export default function Game() {
                     </select>
                   </label>
                 ) : null}
-                <button className="btn ghost sm" onClick={reset} disabled={busy} title="Clear this level's chat">
-                  <Rotate size={14} /> New chat
-                </button>
               </div>
-            </header>
-
-            {levelInfo && (
-              <div className="defense">
-                <p>{levelInfo.defense}</p>
-                {levelInfo.defenses && levelInfo.defenses.length > 0 ? (
-                  <div className="chips">
-                    {levelInfo.defenses.map((d) => (
-                      <span key={d} className="chip">
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="chips">
-                    <span className="chip muted">No defenses</span>
-                  </div>
-                )}
-              </div>
-            )}
-            {levelInfo && <Hints key={levelInfo.number} level={levelInfo.number} onTry={(text) => setInput(text)} />}
-
-            <div className="messages" ref={chatBox}>
-              {levelMsgs.length === 0 && (
-                <div className="empty">
-                  <span className="avatar lg">A</span>
-                  <p className="empty-title">Start a conversation with Ava</p>
-                  <p className="empty-sub">Ask her anything, or plant an email with hidden instructions and ask her to check the inbox.</p>
-                  <div className="suggestions">
-                    {SUGGESTIONS.map((t) => (
-                      <button key={t} className="suggestion" onClick={() => setInput(t)}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {levelMsgs.map((m, i) =>
-                m.role === "system" ? (
-                  <div key={i} className="msg-system">
-                    {m.text}
-                  </div>
-                ) : (
-                  <div key={i} className={`msg ${m.role}`}>
-                    {m.role === "ava" && <span className="avatar">A</span>}
-                    <div className="bubble">
-                      <p>{m.text}</p>
-                      {m.blockedBy && <span className="caught">Caught by {LAYER_NAMES[m.blockedBy] || m.blockedBy}</span>}
-                    </div>
-                  </div>
-                ),
-              )}
-              {busy && (
-                <div className="msg ava">
-                  <span className="avatar">A</span>
-                  <div className="bubble typing" aria-label="Ava is thinking">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                </div>
-              )}
+              <button type="submit" className="send" disabled={busy || !input.trim() || !playerId} aria-label="Send">
+                <ArrowUp size={16} />
+              </button>
             </div>
+          </form>
+          <p className="disclaimer">
+            Everything here is fake: the company, the inbox and the customers. Built by <a href="https://ziyadhisham.com">Ziyad Hisham</a>.
+          </p>
+        </div>
+      </main>
 
-            <form
-              className="composer"
-              onSubmit={(e) => {
-                e.preventDefault();
-                send();
-              }}
-            >
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    send();
-                  }
+      {/* -------------------------------------------------------- side panel */}
+      <aside className="panel" aria-label="Trace and hints">
+        <div className="panel-head">
+          <div className="tabs" role="tablist">
+            <button role="tab" aria-selected={panelTab === "trace"} className={panelTab === "trace" ? "on" : ""} onClick={() => setPanelTab("trace")}>
+              <Pulse size={14} /> Trace
+            </button>
+            <button role="tab" aria-selected={panelTab === "hints"} className={panelTab === "hints" ? "on" : ""} onClick={() => setPanelTab("hints")}>
+              <Bulb size={14} /> Hints
+            </button>
+          </div>
+          <button className="icon-btn" onClick={() => setPanelOpen(false)} aria-label="Close panel">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="panel-body">
+          {panelTab === "trace" ? (
+            <Trace turns={levelTurns} />
+          ) : (
+            levelInfo && (
+              <Hints
+                key={levelInfo.number}
+                level={levelInfo.number}
+                onTry={(text) => {
+                  setInput(text);
+                  if (window.innerWidth < 1200) setPanelOpen(false);
                 }}
-                maxLength={config?.max_input_chars || 1500}
-                placeholder="Message Ava…"
-                rows={2}
-                disabled={!playerId || !unlocked(level)}
               />
-              <div className="composer-bar">
-                {levelInfo && levelInfo.number > 0 ? (
-                  <div className="composer-tools">
-                    <button type="button" className="btn ghost xs" onClick={() => setPlanting("email")}>
-                      <Mail size={14} /> Plant email
-                    </button>
-                    <button type="button" className="btn ghost xs" onClick={() => setPlanting("doc")}>
-                      <FileText size={14} /> Plant doc
-                    </button>
-                  </div>
-                ) : (
-                  <span />
-                )}
-                <div className="composer-send">
-                  <span className="kbd-hint">
-                    <kbd>Enter</kbd> to send
-                  </span>
-                  <button type="submit" className="btn primary icon" disabled={busy || !input.trim() || !playerId} aria-label="Send">
-                    <ArrowUp size={16} />
-                  </button>
-                </div>
-              </div>
-            </form>
+            )
+          )}
+        </div>
+      </aside>
 
+      {/* ----------------------------------------------------------- dialogs */}
+      {dialog === "code" && (
+        <Dialog title="Submit the vault code" onClose={() => setDialog(null)}>
+          <p className="dialog-sub">
+            Level {level} · {levelInfo?.name}. Codes look like <span className="mono">WORD-WORD-00</span>. Watch out for decoys.
+          </p>
+          <form
+            className="code-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              submitGuess();
+            }}
+          >
+            <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="WORD-WORD-00" maxLength={80} autoComplete="off" spellCheck={false} />
+            <button type="submit" className="btn primary lg" disabled={!code.trim()}>
+              Submit
+            </button>
+          </form>
+        </Dialog>
+      )}
+
+      {dialog === "board" && (
+        <Dialog title="Leaderboard" onClose={() => setDialog(null)} wide>
+          <p className="dialog-sub">Highest level broken, then fewest messages.</p>
+          {playerId && (
             <form
-              className="submit-code"
+              className="nick"
               onSubmit={(e) => {
                 e.preventDefault();
-                submitGuess();
+                saveNick();
               }}
             >
-              <label htmlFor="code">
-                <Key size={15} /> Got the code?
-              </label>
-              <input id="code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="WORD-WORD-00" maxLength={80} autoComplete="off" spellCheck={false} />
-              <button type="submit" className="btn primary sm" disabled={!code.trim()}>
-                Submit
+              <input value={nickDraft} onChange={(e) => setNickDraft(e.target.value)} placeholder={nick || "Pick a nickname"} maxLength={24} />
+              <button className="btn" type="submit">
+                {nick ? "Rename" : "Save"}
               </button>
             </form>
-          </section>
-
-          <section className="card trace-card">
-            <header className="card-head">
-              <div>
-                <h2>Live trace</h2>
-                <p className="card-sub">Every step Ava takes, and which defense caught you</p>
-              </div>
-            </header>
-            <Trace turns={levelTurns} />
-          </section>
-        </div>
-
-        {config && config.quests.length > 0 && (
-          <div className="card quests-mobile">
-            <Quests quests={config.quests} done={quests} />
-          </div>
-        )}
-
-        <div className="lower">
-          <section className="card board" id="leaderboard">
-            <header className="card-head">
-              <div>
-                <h2>
-                  <Trophy size={16} /> Leaderboard
-                </h2>
-                <p className="card-sub">Highest level broken, then fewest messages</p>
-              </div>
-              {playerId && (
-                <form
-                  className="nick"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    saveNick();
-                  }}
-                >
-                  <input value={nickDraft} onChange={(e) => setNickDraft(e.target.value)} placeholder={nick || "Your nickname"} maxLength={24} />
-                  <button className="btn ghost sm" type="submit">
-                    {nick ? "Rename" : "Save"}
-                  </button>
-                </form>
-              )}
-            </header>
-            {board.length === 0 ? (
-              <p className="card-empty">Nobody has broken a level yet. Be the first.</p>
-            ) : (
+          )}
+          {board.length === 0 ? (
+            <p className="dialog-empty">Nobody has broken a level yet. Be the first.</p>
+          ) : (
+            <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -524,7 +601,7 @@ export default function Game() {
                 <tbody>
                   {board.map((r, i) => (
                     <tr key={i}>
-                      <td className="rank">{i + 1}</td>
+                      <td className="mono dim">{i + 1}</td>
                       <td>{r.nickname}</td>
                       <td>{r.top_level}</td>
                       <td>{r.messages_used}</td>
@@ -532,82 +609,58 @@ export default function Game() {
                   ))}
                 </tbody>
               </table>
-            )}
-          </section>
+            </div>
+          )}
+        </Dialog>
+      )}
 
-          <section className="card how" id="how">
-            <header className="card-head">
-              <div>
-                <h2>How it works</h2>
-                <p className="card-sub">What happens to every message you send</p>
-              </div>
-            </header>
-            <ol className="steps">
-              <li>
-                <strong>Input guard</strong>
-                <span>From level 2, a pattern check and Meta&apos;s Llama Prompt Guard 2 screen your message for injection.</span>
-              </li>
-              <li>
-                <strong>Agent loop</strong>
-                <span>Ava runs on the model you pick and decides which tools to call. From level 4, a tool policy checks each call in code.</span>
-              </li>
-              <li>
-                <strong>Quarantine</strong>
-                <span>On level 5, inbox and doc text is read by a separate model with no tools. Ava only sees its summary.</span>
-              </li>
-              <li>
-                <strong>Output guard</strong>
-                <span>From level 3, Ava&apos;s reply is scanned for the code, even when it&apos;s disguised.</span>
-              </li>
-              <li>
-                <strong>Leak judge and decoys</strong>
-                <span>On level 5 a judge model rereads the chat for hints. From level 3, Ava may hand you a decoy code.</span>
-              </li>
-            </ol>
-          </section>
-        </div>
-      </main>
-
-      <footer className="footer">
-        <div className="footer-inner">
-          <span className="footer-brand">
-            <Logo size={18} /> Break my agent
-          </span>
-          <span>
-            Larkspur Freight, its inbox and its customers are made up. Emails only go to a log. Built by{" "}
-            <a href="https://ziyadhisham.com">Ziyad Hisham</a> with a hand-written Python agent harness.
-          </span>
-          <a href={GITHUB}>Source on GitHub</a>
-        </div>
-      </footer>
-
-      {toast && (
-        <div className={`toast ${toast.kind}`} role="status">
-          <span className="toast-icon">{toast.kind === "good" ? <Check size={15} /> : <X size={15} />}</span>
-          <span>{toast.text}</span>
-          <button className="toast-close" onClick={() => setToast(null)} aria-label="Dismiss">
-            <X size={14} />
-          </button>
-        </div>
+      {dialog === "how" && (
+        <Dialog title="How it works" onClose={() => setDialog(null)} wide>
+          <p className="dialog-sub">
+            Ava is a real agent loop: a model that calls tools on fake company data. Every message passes through the defenses below, and the
+            trace shows each step.
+          </p>
+          <ol className="steps">
+            <li>
+              <strong>Input guard</strong>
+              <span>From level 2, a pattern check and Meta&apos;s Llama Prompt Guard 2 screen your message for injection.</span>
+            </li>
+            <li>
+              <strong>Agent loop</strong>
+              <span>Ava runs on the model you pick and decides which tools to call. From level 4, a tool policy checks each call in code.</span>
+            </li>
+            <li>
+              <strong>Quarantine</strong>
+              <span>On level 5, inbox and doc text is read by a separate model with no tools. Ava only sees its summary.</span>
+            </li>
+            <li>
+              <strong>Output guard</strong>
+              <span>From level 3, Ava&apos;s reply is scanned for the code, even when it&apos;s disguised.</span>
+            </li>
+            <li>
+              <strong>Leak judge and decoys</strong>
+              <span>On level 5 a judge model rereads the chat for hints. From level 3, Ava may hand you a decoy code.</span>
+            </li>
+          </ol>
+          <p className="dialog-foot">
+            Built with a hand-written Python agent harness. <a href={GITHUB}>Read the source</a>.
+          </p>
+        </Dialog>
       )}
 
       {planting && (
-        <div className="modal" role="dialog" aria-modal="true" onClick={() => setPlanting(null)}>
+        <Dialog title={planting === "email" ? "Plant an email" : "Plant a doc"} onClose={() => setPlanting(null)}>
+          <p className="dialog-sub">
+            {planting === "email" ? "It lands in Ava's inbox." : "It shows up when Ava searches the docs."} Only you can see it. Hide instructions
+            in it, then ask Ava to read it.
+          </p>
           <form
-            className="modal-body"
-            onClick={(e) => e.stopPropagation()}
+            className="form"
             onSubmit={(e) => {
               e.preventDefault();
               submitPlant();
             }}
           >
-            <div className="modal-head">
-              <h2>{planting === "email" ? "Plant an email in Ava's inbox" : "Plant a doc in the company wiki"}</h2>
-              <button type="button" className="icon-btn" onClick={() => setPlanting(null)} aria-label="Close">
-                <X size={16} />
-              </button>
-            </div>
-            <p className="card-sub">Only you can see what you plant. Hide instructions in it, then ask Ava to read it.</p>
             {planting === "email" && (
               <label className="field">
                 <span>From</span>
@@ -622,17 +675,48 @@ export default function Game() {
               <span>Body</span>
               <textarea rows={6} value={plantDraft.body} onChange={(e) => setPlantDraft({ ...plantDraft, body: e.target.value })} maxLength={1500} required />
             </label>
-            <div className="modal-actions">
-              <button type="button" className="btn ghost sm" onClick={() => setPlanting(null)}>
+            <div className="dialog-actions">
+              <button type="button" className="btn" onClick={() => setPlanting(null)}>
                 Cancel
               </button>
-              <button type="submit" className="btn primary sm">
+              <button type="submit" className="btn primary">
                 Plant it
               </button>
             </div>
           </form>
+        </Dialog>
+      )}
+
+      {toast && (
+        <div className={`toast ${toast.kind}`} role="status">
+          <span className="toast-icon">{toast.kind === "good" ? <Check size={14} /> : <X size={14} />}</span>
+          <span>{toast.text}</span>
+          <button className="toast-close" onClick={() => setToast(null)} aria-label="Dismiss">
+            <X size={14} />
+          </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function Dialog({ title, onClose, wide, children }: { title: string; onClose: () => void; wide?: boolean; children: React.ReactNode }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className={`dialog ${wide ? "wide" : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-head">
+          <h2>{title}</h2>
+          <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
