@@ -175,13 +175,6 @@ h1, h2, p { margin: 0; }
 
 /* action bar: hints and the code box, always next to the composer */
 .action-bar { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
-.hint-btn {
-  display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 12px; flex: 0 0 auto;
-  border: 1px solid var(--border-2); background: var(--raised); color: var(--text-2); font-size: 13.5px; font-weight: 500;
-  transition: background .12s, color .12s, border-color .12s;
-}
-.hint-btn svg { color: var(--warn); }
-.hint-btn:hover, .hint-btn.on { color: var(--text); background: var(--raised-2); }
 .code-bar {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 4px 0 12px; border-radius: 12px;
   border: 1px solid var(--border-2); background: var(--raised); transition: border-color .15s;
@@ -209,6 +202,24 @@ h1, h2, p { margin: 0; }
 .composer textarea::placeholder { color: var(--text-3); }
 .composer-foot { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px 10px; }
 .composer-left { display: flex; align-items: center; gap: 4px; }
+.composer-right { display: flex; align-items: center; gap: 6px; }
+.hint-toggle svg { color: var(--warn); }
+.tool-btn.on { background: var(--active); color: var(--text); }
+.composer-wrap { position: relative; }
+.panel-title { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; padding-left: 4px; }
+.panel-title svg { color: var(--text-3); }
+
+/* hints overlay: floats above the chat bar, keeps its state while closed */
+.hints-pop {
+  position: absolute; right: 24px; bottom: calc(100% - 4px); z-index: 31; width: min(400px, calc(100% - 48px)); max-height: min(560px, 70dvh);
+  display: none; flex-direction: column; border-radius: 16px; background: var(--raised); border: 1px solid var(--border-2);
+  box-shadow: 0 24px 64px -8px rgba(0,0,0,.6);
+}
+.hints-pop.open { display: flex; animation: pop .16s var(--ease); }
+.hints-pop-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 16px; border-bottom: 1px solid var(--border); }
+.hints-pop-head span { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 500; }
+.hints-pop-head svg { color: var(--warn); }
+.hints-pop-body { overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--raised-2) transparent; }
 .tool-btn {
   display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 99px; border: 1px solid var(--border-2);
   background: transparent; color: var(--text-2); transition: background .12s, color .12s;
@@ -401,9 +412,9 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; background: rgba(2
   .shell.nav-open .scrim { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(0,0,0,.5); animation: fade .15s; }
   .topbar { padding: 0 8px; }
   .hide-sm, .crumb, .crumb-sep { display: none; }
-  .hint-btn { padding: 0 12px; }
   .panel { width: 100vw; }
   .column, .composer-wrap { padding-left: 14px; padding-right: 14px; }
+  .hints-pop { right: 14px; width: calc(100% - 28px); }
   .greeting { padding-top: 28px; }
   .greeting h1 { font-size: 24px; }
   .suggestions { grid-template-columns: 1fr; margin-top: 24px; }

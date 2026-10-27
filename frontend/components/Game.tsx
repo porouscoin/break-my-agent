@@ -77,7 +77,7 @@ export default function Game() {
   const [quests, setQuests] = useState<string[]>([]);
   const [navOpen, setNavOpen] = useState(false); // mobile drawer
   const [panelOpen, setPanelOpen] = useState(true);
-  const [panelTab, setPanelTab] = useState<"trace" | "hints">("trace");
+  const [hintsOpen, setHintsOpen] = useState(false);
   const [dialog, setDialog] = useState<null | "board" | "how">(null);
   const [plantMenu, setPlantMenu] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
@@ -241,6 +241,7 @@ export default function Game() {
 
   const pickLevel = (n: number) => {
     setLevel(n);
+    setHintsOpen(false);
     setNavOpen(false);
   };
 
@@ -334,8 +335,8 @@ export default function Game() {
             <button
               className={`icon-btn ${panelOpen ? "on" : ""}`}
               onClick={() => setPanelOpen(!panelOpen)}
-              aria-label="Toggle trace and hints panel"
-              title="Trace and hints"
+              aria-label="Toggle the live trace"
+              title="Live trace"
             >
               <PanelRight size={17} />
             </button>
@@ -421,16 +422,6 @@ export default function Game() {
 
         <div className="composer-wrap">
           <div className="action-bar">
-            <button
-              type="button"
-              className={`hint-btn ${panelOpen && panelTab === "hints" ? "on" : ""}`}
-              onClick={() => {
-                setPanelTab("hints");
-                setPanelOpen(true);
-              }}
-            >
-              <Bulb size={15} /> Hints
-            </button>
             <form
               className="code-bar"
               onSubmit={(e) => {
@@ -446,7 +437,7 @@ export default function Game() {
                 id="code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter the vault code"
+                placeholder="Vault code, e.g. CORAL-PIKE-47"
                 maxLength={80}
                 autoComplete="off"
                 spellCheck={false}
@@ -456,6 +447,29 @@ export default function Game() {
               </button>
             </form>
           </div>
+          {hintsOpen && <div className="menu-backdrop" onClick={() => setHintsOpen(false)} />}
+          {levelInfo && (
+            <div className={`hints-pop ${hintsOpen ? "open" : ""}`} role="dialog" aria-label="Hints" aria-hidden={!hintsOpen}>
+              <div className="hints-pop-head">
+                <span>
+                  <Bulb size={15} /> Hints for level {levelInfo.number}
+                </span>
+                <button className="icon-btn" onClick={() => setHintsOpen(false)} aria-label="Close hints">
+                  <X size={15} />
+                </button>
+              </div>
+              <div className="hints-pop-body">
+                <Hints
+                  key={levelInfo.number}
+                  level={levelInfo.number}
+                  onTry={(text) => {
+                    setInput(text);
+                    setHintsOpen(false);
+                  }}
+                />
+              </div>
+            </div>
+          )}
           <form
             className="composer"
             onSubmit={(e) => {
@@ -539,9 +553,21 @@ export default function Game() {
                   </label>
                 ) : null}
               </div>
-              <button type="submit" className="send" disabled={busy || !input.trim() || !playerId} aria-label="Send">
-                <ArrowUp size={16} />
-              </button>
+              <div className="composer-right">
+                <button type="submit" className="send" disabled={busy || !input.trim() || !playerId} aria-label="Send">
+                  <ArrowUp size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={`tool-btn hint-toggle ${hintsOpen ? "on" : ""}`}
+                  onClick={() => setHintsOpen(!hintsOpen)}
+                  aria-label="Hints"
+                  aria-expanded={hintsOpen}
+                  title="Hints"
+                >
+                  <Bulb size={16} />
+                </button>
+              </div>
             </div>
           </form>
           <p className="disclaimer">
@@ -551,35 +577,17 @@ export default function Game() {
       </main>
 
       {/* -------------------------------------------------------- side panel */}
-      <aside className="panel" aria-label="Trace and hints">
+      <aside className="panel" aria-label="Live trace">
         <div className="panel-head">
-          <div className="tabs" role="tablist">
-            <button role="tab" aria-selected={panelTab === "trace"} className={panelTab === "trace" ? "on" : ""} onClick={() => setPanelTab("trace")}>
-              <Pulse size={14} /> Trace
-            </button>
-            <button role="tab" aria-selected={panelTab === "hints"} className={panelTab === "hints" ? "on" : ""} onClick={() => setPanelTab("hints")}>
-              <Bulb size={14} /> Hints
-            </button>
+          <div className="panel-title">
+            <Pulse size={15} /> Live trace
           </div>
           <button className="icon-btn" onClick={() => setPanelOpen(false)} aria-label="Close panel">
             <X size={16} />
           </button>
         </div>
         <div className="panel-body">
-          {panelTab === "trace" ? (
-            <Trace turns={levelTurns} />
-          ) : (
-            levelInfo && (
-              <Hints
-                key={levelInfo.number}
-                level={levelInfo.number}
-                onTry={(text) => {
-                  setInput(text);
-                  if (window.innerWidth < 1200) setPanelOpen(false);
-                }}
-              />
-            )
-          )}
+          <Trace turns={levelTurns} />
         </div>
       </aside>
 
