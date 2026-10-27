@@ -115,6 +115,9 @@ async def call_model(
         "max_tokens": max_tokens,
         "temperature": temperature,
     }
+    if "gpt-oss" in spec.model:
+        # Reasoning tokens count against max_tokens; low effort leaves room for the answer.
+        body["reasoning_effort"] = "low"
     if tools and spec.supports_tools:
         body["tools"] = tools
         body["tool_choice"] = "auto"
@@ -130,19 +133,22 @@ async def call_model(
         try:
             resp = await _http().post(f"{spec.base_url}/chat/completions", json=body, headers=headers)
         except httpx.HTTPError as e:
-            last_error = f"network error: {type(e).__name__}"
+            last_error = f"failed: network error: {type(e).__name__}"
         else:
             if resp.status_code == 200:
                 data = resp.json()
                 break
-            last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+            if resp.status_code == 429:
+                last_error = "is busy right now (free tier rate limit). Wait a minute or pick another model."
+            else:
+                last_error = f"failed: HTTP {resp.status_code}: {resp.text[:200]}"
             # Only rate limits and server errors are worth retrying.
             if resp.status_code != 429 and resp.status_code < 500:
                 break
         await asyncio.sleep(1.5 * (2**attempt))
 
     if data is None:
-        raise ProviderError(f"{spec.label} failed: {last_error}")
+        raise ProviderError(f"{spec.label} {last_error}")
 
     message = data["choices"][0]["message"]
     content = THINK_RE.sub("", message.get("content") or "").strip()
