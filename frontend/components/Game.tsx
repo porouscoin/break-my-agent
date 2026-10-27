@@ -14,6 +14,7 @@ import {
   TraceEvent,
 } from "@/lib/api";
 import Hints from "./Hints";
+import Quests from "./Quests";
 import Trace from "./Trace";
 
 type Msg = { role: "user" | "ava" | "system"; text: string; blockedBy?: string | null };
@@ -70,6 +71,7 @@ export default function Game() {
   const [plantDraft, setPlantDraft] = useState({ sender: "", title: "", body: "" });
   const [board, setBoard] = useState<Board>([]);
   const [needsCheck, setNeedsCheck] = useState(false);
+  const [quests, setQuests] = useState<string[]>([]);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
 
@@ -79,6 +81,7 @@ export default function Game() {
       store(s.player_id);
       setPlayerId(s.player_id);
       setSolved(s.solved);
+      setQuests(s.quests || []);
       setNick(s.nickname || "");
       setNeedsCheck(false);
     } catch (e) {
@@ -140,6 +143,10 @@ export default function Game() {
         });
         if (ev.type === "reply") addMsg(lv, { role: "ava", text: ev.text, blockedBy: ev.blocked_by });
         if (ev.type === "error") addMsg(lv, { role: "system", text: ev.message });
+        if (ev.type === "quest") {
+          setQuests((q) => (q.includes(ev.id) ? q : [...q, ev.id]));
+          setToast({ kind: "good", text: `Side quest captured: ${ev.name}. ${ev.lesson}` });
+        }
       });
     } catch (e) {
       addMsg(lv, { role: "system", text: (e as Error).message });
@@ -153,10 +160,16 @@ export default function Game() {
     try {
       const r = await guess(playerId, level, code);
       setSolved(r.solved);
+      setQuests(r.quests);
       if (r.correct) {
         setToast({ kind: "good", text: `Level ${level} broken. ${level < 5 ? "The next level is open." : "You beat every level."}` });
         setCode("");
         getLeaderboard().then((b) => setBoard(b.rows)).catch(() => {});
+      } else if (r.decoy) {
+        setToast({
+          kind: "bad",
+          text: `That's a decoy. Ava played you.${r.new_quest ? ` Side quest captured: ${r.new_quest.name}.` : ""}`,
+        });
       } else {
         setToast({ kind: "bad", text: "That's not the code." });
       }
@@ -244,7 +257,7 @@ export default function Game() {
           <strong>Level {levelInfo.number} defense:</strong> {levelInfo.defense}
         </p>
       )}
-      {levelInfo && <Hints key={levelInfo.number} level={levelInfo.number} />}
+      {levelInfo && <Hints key={levelInfo.number} level={levelInfo.number} onTry={(text) => setInput(text)} />}
 
       <section className="grid">
         <div className="panel chat">
@@ -356,6 +369,8 @@ export default function Game() {
         </div>
       </section>
 
+      {config && config.quests.length > 0 && <Quests quests={config.quests} done={quests} />}
+
       <section className="panel board">
         <div className="panel-head">
           <h2>Leaderboard</h2>
@@ -403,15 +418,16 @@ export default function Game() {
       <section className="how">
         <h2>How it works</h2>
         <ol>
-          <li>Your message goes through the input guard (level 2 and up), a pattern check plus a small classifier model.</li>
+          <li>Your message goes through the input guard (level 2 and up): a pattern check plus Meta&apos;s Llama Prompt Guard 2, a small model trained to spot injection.</li>
           <li>Ava, running on the model you pick, decides whether to call tools. Tool calls are checked in code by the tool policy (level 4 and up).</li>
           <li>On level 5, inbox and doc text is read by a separate model with no tools, and Ava only sees its summary.</li>
           <li>Ava&apos;s reply passes the output guard (level 3 and up), which looks for the code even when it&apos;s disguised.</li>
-          <li>Every guard is good but not perfect. Find the gap.</li>
+          <li>On level 5 a judge model also reads the whole chat for hints, and Ava may hand out decoy codes.</li>
+          <li>Levels 1 to 4 have a gap on purpose. Level 5 is built to hold.</li>
         </ol>
         <p className="hint">
           Nothing here is real: Larkspur Freight, its inbox and its customers are made up, and emails only go to a log. Built by{" "}
-          <a href="https://ziyadhisham.com">Ziyad Bin Hisham</a> with a hand-written Python agent harness.{" "}
+          <a href="https://ziyadhisham.com">Ziyad Hisham</a> with a hand-written Python agent harness.{" "}
           <a href={GITHUB}>Source on GitHub</a>.
         </p>
       </section>

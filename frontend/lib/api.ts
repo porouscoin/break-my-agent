@@ -8,7 +8,9 @@ export type Config = {
   budget_left: boolean;
   max_input_chars: number;
   turnstile: boolean;
+  quests: QuestInfo[];
 };
+export type QuestInfo = { id: string; name: string; goal: string; lesson: string };
 
 export type TraceEvent =
   | { type: "guard"; layer: string; allowed: boolean; reason: string; detail?: Record<string, unknown> | null }
@@ -20,7 +22,6 @@ export type TraceEvent =
       tokens_in: number;
       tokens_out: number;
       cost_usd: number;
-      text: string;
       tool_calls: { name: string; args: Record<string, unknown> }[];
     }
   | { type: "tool_call"; name: string; args: Record<string, unknown> }
@@ -28,6 +29,7 @@ export type TraceEvent =
   | { type: "quarantine"; name: string; summary?: string; contains_instructions?: boolean; error?: string }
   | { type: "email_sent"; to: string; subject: string; body: string }
   | { type: "reply"; text: string; blocked_by: string | null }
+  | { type: "quest"; id: string; name: string; lesson: string }
   | { type: "error"; message: string }
   | { type: "done"; cost_usd: number; tokens: number; blocked_by: string | null };
 
@@ -50,7 +52,7 @@ export const startSession = (player_id: string | null, turnstile_token: string |
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ player_id, turnstile_token }),
-  }).then((r) => json<{ player_id: string; nickname: string; solved: number[] }>(r));
+  }).then((r) => json<{ player_id: string; nickname: string; solved: number[]; quests: string[] }>(r));
 
 const post = <T,>(path: string, body: unknown) =>
   fetch(`${API_URL}${path}`, {
@@ -60,7 +62,13 @@ const post = <T,>(path: string, body: unknown) =>
   }).then((r) => json<T>(r));
 
 export const guess = (player_id: string, level: number, code: string) =>
-  post<{ correct: boolean; solved: number[] }>("/api/guess", { player_id, level, code });
+  post<{
+    correct: boolean;
+    decoy: boolean;
+    solved: number[];
+    quests: string[];
+    new_quest: { id: string; name: string; lesson: string } | null;
+  }>("/api/guess", { player_id, level, code });
 
 export const plant = (player_id: string, kind: "email" | "doc", sender: string, title: string, body: string) =>
   post<{ ok: boolean }>("/api/plant", { player_id, kind, sender, title, body });

@@ -13,7 +13,7 @@ import json
 from dataclasses import dataclass, field
 from typing import AsyncIterator
 
-from . import guards
+from . import guards, quests
 from .config import ModelSpec, settings
 from .levels import Level, secret_code, system_prompt
 from .providers import ProviderError, call_model
@@ -83,6 +83,7 @@ async def run_agent(
     tools = TOOL_SCHEMAS if (level.tools and spec.supports_tools) else None
     ctx.hide_private_fields = level.tool_policy
 
+    read_planted = False  # for the puppet master quest: did Ava read planted text this run?
     # 2. The loop: call the model, run any tools, repeat
     for step in range(1, settings.max_steps + 1):
         totals.steps = step
@@ -126,6 +127,8 @@ async def run_agent(
                     return
             history.append({"role": "assistant", "content": reply})
             yield {"type": "reply", "text": reply, "blocked_by": None}
+            for quest_id in quests.check_reply(reply):
+                yield {"type": "quest", "id": quest_id}
             return
 
         history.append(_assistant_message(result.content, result.tool_calls))
@@ -151,10 +154,16 @@ async def run_agent(
                     continue
 
             output = run_tool(tc.name, tc.arguments, ctx)
+            if tc.name == "read_inbox" and ctx.planted_emails:
+                read_planted = True
+            if tc.name == "search_docs" and any(d["title"] in output for d in ctx.planted_docs):
+                read_planted = True
             if tc.name == "send_email":
                 email = ctx.outbox[-1]
                 totals.emails.append(email)
                 yield {"type": "email_sent", **email}
+                for quest_id in quests.check_email(email, read_planted):
+                    yield {"type": "quest", "id": quest_id}
 
             # Quarantine: the main agent never sees raw untrusted text.
             if level.quarantine and tc.name in UNTRUSTED_TOOLS:

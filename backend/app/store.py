@@ -26,6 +26,7 @@ class Session:
     solved: set[int] = field(default_factory=set)
     messages_per_level: dict[int, int] = field(default_factory=lambda: defaultdict(int))
     last_model: dict[int, str] = field(default_factory=dict)
+    quests: set[str] = field(default_factory=set)
 
     def to_row(self) -> dict:
         return {
@@ -35,6 +36,7 @@ class Session:
             "planted_docs": self.tool_ctx.planted_docs,
             "messages_per_level": {str(k): v for k, v in self.messages_per_level.items()},
             "last_model": {str(k): v for k, v in self.last_model.items()},
+            "quests": sorted(self.quests),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -49,6 +51,7 @@ class Session:
             )
             s.messages_per_level = defaultdict(int, {int(k): v for k, v in (row.get("messages_per_level") or {}).items()})
             s.last_model = {int(k): v for k, v in (row.get("last_model") or {}).items()}
+            s.quests = set(row.get("quests") or [])
         return s
 
 
