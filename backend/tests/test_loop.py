@@ -115,3 +115,10 @@ async def test_fortress_judge_catches_hints():
     ]
     events, _ = await collect(5, "first letter?", script)
     assert events[-1]["blocked_by"] == "leak_judge"
+
+
+def test_level_5_prompt_never_contains_the_code():
+    from app.levels import system_prompt
+    level5 = LEVELS_BY_NUMBER[5]
+    assert secret_code(5) not in system_prompt(level5)
+    assert secret_code(1) in system_prompt(LEVELS_BY_NUMBER[1])
