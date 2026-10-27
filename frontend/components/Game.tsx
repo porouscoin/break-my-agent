@@ -47,6 +47,7 @@ type Board = { nickname: string; top_level: number; levels_solved: number; messa
 const GITHUB = process.env.NEXT_PUBLIC_GITHUB_URL || "https://github.com/porouscoin/break-my-agent";
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
 const STORAGE_KEY = "bma-player";
+const CHAT_KEY = "bma-chat";
 
 const LAYER_NAMES: Record<string, string> = {
   input_guard: "the input guard",
@@ -67,6 +68,11 @@ function readStored(): string | null {
   } catch {
     return null;
   }
+}
+
+// Keeps the newest entries per level so saved chats stay small.
+function trimPerLevel<T>(byLevel: Record<number, T[]>, keep: number): Record<number, T[]> {
+  return Object.fromEntries(Object.entries(byLevel).map(([lv, list]) => [lv, list.slice(-keep)]));
 }
 
 function store(id: string) {
@@ -146,6 +152,32 @@ export default function Game() {
     s.onload = render;
     document.head.appendChild(s);
   }, [needsCheck, begin]);
+
+  // Bring back this visitor's chats, level and model after a refresh. Ava's
+  // own memory and progress live on the server; this only restores the view.
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!playerId || restored.current) return;
+    restored.current = true;
+    try {
+      const saved = JSON.parse(localStorage.getItem(CHAT_KEY) || "null");
+      if (saved?.player !== playerId) return;
+      setMessages(saved.messages || {});
+      setTurns(saved.turns || {});
+      if (saved.level && (saved.level <= 1 || solved.includes(saved.level - 1))) setLevel(saved.level);
+      if (config?.models.some((m) => m.id === saved.model)) setModel(saved.model);
+    } catch {}
+  }, [playerId, solved, config]);
+
+  useEffect(() => {
+    if (!playerId || !restored.current || busy) return;
+    try {
+      localStorage.setItem(
+        CHAT_KEY,
+        JSON.stringify({ player: playerId, level, model, messages: trimPerLevel(messages, 60), turns: trimPerLevel(turns, 20) }),
+      );
+    } catch {}
+  }, [playerId, level, model, messages, turns, busy]);
 
   useEffect(() => {
     if (!toast) return;

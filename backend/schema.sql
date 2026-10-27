@@ -56,8 +56,10 @@ create table if not exists sessions (
   planted_docs jsonb not null default '[]',
   messages_per_level jsonb not null default '{}',
   last_model jsonb not null default '{}',
+  quests jsonb not null default '[]',
   updated_at timestamptz not null default now()
 );
+alter table sessions add column if not exists quests jsonb not null default '[]';
 
 create table if not exists events (
   id bigint generated always as identity primary key,
