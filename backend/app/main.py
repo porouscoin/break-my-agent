@@ -1,6 +1,8 @@
 """HTTP API for Break my agent."""
 
+import asyncio
 import hashlib
+import hmac
 import json
 import re
 import uuid
@@ -12,9 +14,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from . import store
-from .config import model_registry, settings
+from .config import ModelSpec, env, model_registry, settings
 from .levels import LEVELS, LEVELS_BY_NUMBER, secret_code
 from .loop import RunTotals, run_agent
+from .providers import ProviderError, call_model
+from .tools import TOOL_SCHEMAS
 
 MODELS = model_registry()
 
@@ -273,3 +277,33 @@ async def reset(body: ResetIn):
 @app.get("/api/leaderboard")
 async def get_leaderboard():
     return {"rows": await store.leaderboard()}
+
+
+# ---------------------------------------------------------------------- admin
+
+
+@app.get("/api/admin/groq-models")
+async def groq_models_probe(request: Request):
+    """Lists the models Groq offers this key and checks which can call tools.
+    Needs the X-Admin-Key header set to SECRET_KEY."""
+    given = request.headers.get("x-admin-key", "")
+    if not given or not hmac.compare_digest(given, settings.secret_key):
+        raise HTTPException(404)
+    key = env("GROQ_API_KEY")
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {key}"})
+    ids = sorted(m["id"] for m in resp.json().get("data", []))
+    skip = ("whisper", "tts", "orpheus", "playai", "distil")
+
+    async def probe(model: str) -> str:
+        if any(word in model for word in skip):
+            return "not a chat model"
+        spec = ModelSpec(model, model, "groq", model, "https://api.groq.com/openai/v1", key, 0.0, 0.0)
+        try:
+            r = await call_model(spec, [{"role": "user", "content": "Check the shared inbox."}], tools=TOOL_SCHEMAS, max_tokens=200)
+        except ProviderError as e:
+            return f"error: {str(e)[:120]}"
+        return "tools ok" if r.tool_calls else "replied without a tool call"
+
+    outcomes = await asyncio.gather(*(probe(m) for m in ids))
+    return dict(zip(ids, outcomes))
