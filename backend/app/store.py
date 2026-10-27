@@ -115,6 +115,10 @@ async def load_session(player_id: str) -> Session:
     player = await _sb("GET", f"players?id=eq.{player_id}&select=nickname")
     row = await _sb("GET", f"sessions?player_id=eq.{player_id}&select=*")
     wins = await _sb("GET", f"wins?player_id=eq.{player_id}&select=level")
+    if player == []:
+        # Players who joined before the database was connected have no row yet,
+        # and sessions and wins both need one.
+        await _sb("POST", "players", prefer="resolution=merge-duplicates", json={"id": player_id})
     nickname = (player[0]["nickname"] or "") if player else ""
     return Session.from_row(player_id, row[0] if row else None, nickname, {w["level"] for w in wins or []})
 
