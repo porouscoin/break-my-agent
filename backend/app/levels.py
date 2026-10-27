@@ -34,6 +34,21 @@ LEVELS = [
 
 LEVELS_BY_NUMBER = {lv.number: lv for lv in LEVELS}
 
+
+def defenses(level: Level) -> list[str]:
+    """Short labels for the defenses a level has, shown as chips in the UI."""
+    flags = [
+        (level.number >= 2 and not level.fortress, "Secrecy prompt"),
+        (level.fortress, "Strict prompt"),
+        (level.input_guard, "Input guard"),
+        (level.output_guard, "Output guard"),
+        (level.tool_policy, "Tool policy"),
+        (level.quarantine, "Quarantine"),
+        (level.fortress, "Leak judge"),
+        (level.decoy, "Decoy code"),
+    ]
+    return [label for on, label in flags if on]
+
 _WORDS_A = [
     "AMBER", "BRISK", "CEDAR", "DUSKY", "EMBER", "FROST", "GLINT", "HAZEL", "IVORY", "JUNIPER",
     "KESTREL", "LUNAR", "MAPLE", "NOBLE", "OCHRE", "PEBBLE", "QUARTZ", "RAVEN", "SABLE", "TIDAL",

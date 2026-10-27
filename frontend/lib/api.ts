@@ -1,6 +1,6 @@
 export const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
-export type LevelInfo = { number: number; name: string; defense: string; fixed_model: string | null };
+export type LevelInfo = { number: number; name: string; defense: string; fixed_model: string | null; defenses?: string[] };
 export type ModelInfo = { id: string; label: string; tools: boolean };
 export type Config = {
   levels: LevelInfo[];

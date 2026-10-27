@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Bulb } from "./Icons";
 
 type LevelHelp = {
   hints: string[];
@@ -76,41 +77,46 @@ export default function Hints({ level, onTry }: { level: number; onTry?: (text: 
   const more = shown < help.hints.length;
 
   return (
-    <div className="hints">
+    <div className={`hints ${shown > 0 ? "open" : ""}`}>
       {help.hints.slice(0, shown).map((h, i) => (
         <p key={i} className="hint-line">
-          <span className="hint-tag">Hint {i + 1}</span> {h}
+          <span className="hint-num">{i + 1}</span>
+          <span>{h}</span>
         </p>
       ))}
       {solution && (
         <div className="solution">
-          <p>
-            <strong>{help.solutionLabel || "Solution"}:</strong> {help.solution}
-          </p>
+          <p className="solution-label">{help.solutionLabel || "Solution"}</p>
+          <p>{help.solution}</p>
           {help.prompt && (
-            <p>
+            <div className="solution-prompt">
               <code>{help.prompt}</code>
               {onTry && (
-                <button className="ghost try" onClick={() => onTry(help.prompt!)}>
+                <button className="btn primary xs" onClick={() => onTry(help.prompt!)}>
                   Try it
                 </button>
               )}
-            </p>
+            </div>
           )}
-          <p className="hint-why">
-            <strong>{help.whyLabel || "Why it works"}:</strong> {help.why}
+          <p className="solution-why">
+            <strong>{help.whyLabel || "Why it works"}.</strong> {help.why}
           </p>
         </div>
       )}
       <div className="hint-actions">
         {more && (
-          <button className="ghost" onClick={() => setShown(shown + 1)}>
-            {shown === 0 ? "Need a hint?" : "Another hint"}
+          <button className="link-btn" onClick={() => setShown(shown + 1)}>
+            <Bulb size={14} /> {shown === 0 ? "Need a hint?" : "Another hint"}
+            {shown > 0 && (
+              <span className="hint-count">
+                {shown}/{help.hints.length}
+              </span>
+            )}
           </button>
         )}
         {!more && !solution && (
-          <button className="ghost" onClick={() => setSolution(true)}>
-            {help.solutionLabel ? "Is there a solution?" : "Show the solution"}
+          <button className="link-btn" onClick={() => setSolution(true)}>
+            <Bulb size={14} /> {help.solutionLabel ? "Is there a solution?" : "Show the solution"}
           </button>
         )}
       </div>
