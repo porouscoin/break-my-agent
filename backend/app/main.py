@@ -15,7 +15,8 @@ from pydantic import BaseModel, Field
 
 from . import store
 from .config import ModelSpec, env, model_registry, settings
-from .levels import LEVELS, LEVELS_BY_NUMBER, secret_code
+from .levels import LEVELS, LEVELS_BY_NUMBER, RETIRED_CODE, decoy_code, secret_code
+from .quests import QUESTS, QUESTS_BY_ID
 from .loop import RunTotals, run_agent
 from .providers import ProviderError, call_model
 from .tools import TOOL_SCHEMAS
@@ -86,6 +87,7 @@ async def config():
         "budget_left": await store.budget_left(),
         "max_input_chars": settings.max_input_chars,
         "turnstile": bool(settings.turnstile_secret),
+        "quests": [{"id": q.id, "name": q.name, "goal": q.goal, "lesson": q.lesson} for q in QUESTS],
     }
 
 
@@ -118,7 +120,7 @@ async def session(body: SessionIn, request: Request):
             raise HTTPException(403, "Bot check failed. Refresh the page.")
         s = store.Session(player_id=store.new_player_id())
         await store.save_player(s)
-    return {"player_id": s.player_id, "nickname": s.nickname, "solved": sorted(s.solved)}
+    return {"player_id": s.player_id, "nickname": s.nickname, "solved": sorted(s.solved), "quests": sorted(s.quests)}
 
 
 class NicknameIn(BaseModel):
@@ -176,6 +178,12 @@ async def chat(body: ChatIn, request: Request):
         trace: list[dict] = []
         try:
             async for event in run_agent(level, spec, history, text, s.tool_ctx, totals):
+                if event["type"] == "quest":
+                    if event["id"] in s.quests:
+                        continue
+                    s.quests.add(event["id"])
+                    quest = QUESTS_BY_ID[event["id"]]
+                    event = {**event, "name": quest.name, "lesson": quest.lesson}
                 trace.append(event)
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:  # never leave the browser hanging
@@ -253,12 +261,19 @@ async def guess(body: GuessIn):
         raise HTTPException(400, "Unknown level.")
     if not await store.hit("guess", s.player_id, [(settings.guesses_per_minute, 60)]):
         raise HTTPException(429, "Too many guesses. Wait a minute.")
-    correct = _norm(body.code) == _norm(secret_code(body.level))
+    guessed = _norm(body.code)
+    correct = guessed == _norm(secret_code(body.level))
+    decoy = guessed in (_norm(decoy_code(body.level)), _norm(RETIRED_CODE))
+    new_quest = None
     if correct and body.level not in s.solved:
         s.solved.add(body.level)
         level = LEVELS_BY_NUMBER[body.level]
         await store.save_win(s, body.level, s.last_model.get(body.level, level.fixed_model or "unknown"))
-    return {"correct": correct, "solved": sorted(s.solved)}
+    if decoy and "got_played" not in s.quests:
+        s.quests.add("got_played")
+        new_quest = {"id": "got_played", "name": QUESTS_BY_ID["got_played"].name, "lesson": QUESTS_BY_ID["got_played"].lesson}
+        await store.save_session(s)
+    return {"correct": correct, "decoy": decoy, "solved": sorted(s.solved), "quests": sorted(s.quests), "new_quest": new_quest}
 
 
 class ResetIn(BaseModel):

@@ -58,3 +58,10 @@ def test_plant_tells_ava_about_new_mail():
     client.post("/api/plant", json={"player_id": pid, "kind": "email", "title": "x", "body": "y"})
     from app import store
     assert store._mem_sessions[pid].histories[1][-1]["role"] == "system"
+
+
+def test_decoy_guess_is_wrong_but_captures_a_quest():
+    from app.levels import RETIRED_CODE
+    pid = new_player()
+    r = client.post("/api/guess", json={"player_id": pid, "level": 1, "code": RETIRED_CODE}).json()
+    assert r["correct"] is False and r["decoy"] is True and "got_played" in r["quests"]

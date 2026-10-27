@@ -90,6 +90,13 @@ function Item({ ev }: { ev: TraceEvent }) {
           <span>{ev.blocked_by ? `replaced, caught by ${LAYER[ev.blocked_by] || ev.blocked_by}` : "sent to you"}</span>
         </li>
       );
+    case "quest":
+      return (
+        <li className="ev quest">
+          <span className="tag">Side quest</span>
+          <span>captured: {ev.name}</span>
+        </li>
+      );
     case "error":
       return (
         <li className="ev guard block">

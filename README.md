@@ -12,12 +12,18 @@ Everything is fake: the company, the inbox, the customers. Emails only go to a l
 | --- | --- | --- |
 | 0 | None | An uncensored model with the code in its prompt (only when an OpenRouter key is set) |
 | 1 | None | Ava knows the code and was never told to keep it secret |
-| 2 | Secrecy rule + input guard | Ava is told to keep the code secret, and regex patterns plus a classifier model screen each message before she sees it |
-| 3 | Output guard | Ava's reply is scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts |
+| 2 | Secrecy rule + input guard | Ava is told to keep the code secret, and regex patterns plus Meta's Llama Prompt Guard 2 screen each message before she sees it |
+| 3 | Output guard + decoy | Ava's reply is scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts. Pushy visitors get a decoy code that looks real |
 | 4 | Tool policy | Checked in code: email only to `@larkspur.test`, email bodies scanned, private customer fields hidden |
-| 5 | Fortress | Ava is never given the code, so there is nothing to leak. Every defense above is still on, plus quarantine (inbox and doc text is read by a second model with no tools), a strict prompt, a censor for any single part of the code, and a judge model that reads the whole conversation. Impossible by design |
+| 5 | Fortress | Every defense above, plus quarantine (inbox and doc text is read by a second model with no tools), a strict prompt, a censor for any single part of the code, and a judge model that rereads the whole conversation. Almost impossible |
 
-Levels 1 to 4 are beatable on purpose. Level 5 is impossible: the only defense that cannot be talked around is keeping the secret out of the model's context.
+Levels 1 to 4 are beatable on purpose. Level 5 is possible in theory but stacks every defense at once.
+
+### Decoys and side quests
+
+Levels 3 to 5 have a decoy: when someone pushes, Ava hands over a fake code that shares no part with the real one, so the censor lets it through and it feels like a win. The vault policy doc also mentions a retired code. Entering either one in the guess box tells you that you got played.
+
+Side quests are CTF-style flags that work on any level: reveal Ava's instructions, leak a customer's private data, get her to email outside the company, plant a message that makes her send an email on her own, and fall for a decoy.
 
 ## How a message flows
 
@@ -44,7 +50,8 @@ The agent harness is plain Python with no agent framework.
 | --- | --- |
 | `backend/app/providers.py` | `call_model()`: one HTTP adapter for DeepSeek, Gemini, Groq and OpenRouter (all OpenAI-compatible). Retries with backoff, strips `<think>` tags, parses tool-call JSON, computes cost from token usage |
 | `backend/app/loop.py` | `run_agent()`: the agent loop. An async generator that yields one trace event per step, with the guards hooked in |
-| `backend/app/guards.py` | The input guard, output guard, tool policy and quarantine |
+| `backend/app/guards.py` | The input guard, output guard, tool policy, quarantine and leak judge |
+| `backend/app/quests.py` | Side quest definitions and the checks that award them |
 | `backend/app/tools.py` | Tool schemas and their implementations on fake data |
 | `backend/app/levels.py` | Level definitions, system prompts, and per-level codes derived from `SECRET_KEY` with HMAC |
 | `backend/app/store.py` | Sessions, rate limits, the daily budget, Supabase logging |
