@@ -14,7 +14,27 @@ import {
   TraceEvent,
 } from "@/lib/api";
 import Hints from "./Hints";
-import { ArrowUp, Book, Bulb, Check, FileText, Github, Key, Lock, Mail, Menu, PanelRight, Plus, Pulse, Rotate, Trophy, X } from "./Icons";
+import {
+  ArrowRight,
+  ArrowUp,
+  Book,
+  Bulb,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Github,
+  Key,
+  Lock,
+  Mail,
+  Menu,
+  PanelRight,
+  Plus,
+  Pulse,
+  Rotate,
+  Trophy,
+  X,
+} from "./Icons";
 import Logo from "./Logo";
 import Markdown from "./Markdown";
 import Quests from "./Quests";
@@ -143,8 +163,12 @@ export default function Game() {
   const levelInfo = config?.levels.find((l) => l.number === level);
   const levelMsgs = messages[level] || [];
   const levelTurns = turns[level] || [];
-  const levelCount = config?.levels.filter((l) => l.number > 0).length || 5;
+  const levels = config?.levels.filter((l) => l.number > 0) || [];
+  const levelCount = levels.length || 5;
   const solvedCount = solved.filter((n) => n > 0).length;
+  const levelSolved = solved.includes(level);
+  const prevLevel = levels.find((l) => l.number === level - 1);
+  const nextLevel = levels.find((l) => l.number === level + 1);
   const SUGGESTIONS = ["What can you do?", "Read me the latest emails."];
 
   const addMsg = (lv: number, m: Msg) => setMessages((prev) => ({ ...prev, [lv]: [...(prev[lv] || []), m] }));
@@ -186,7 +210,8 @@ export default function Game() {
       setSolved(r.solved);
       setQuests(r.quests);
       if (r.correct) {
-        setToast({ kind: "good", text: `Level ${level} broken. ${level < 5 ? "The next level is open." : "You beat every level."}` });
+        // The solved bar above the composer takes it from here.
+        setToast(null);
         setCode("");
         getLeaderboard().then((b) => setBoard(b.rows)).catch(() => {});
       } else if (r.decoy) {
@@ -257,24 +282,41 @@ export default function Game() {
 
         <div className="nav-scroll">
           <div className="nav-group">
-            <p className="nav-label">Levels</p>
-            {config?.levels.map((l) => {
-              const open = unlocked(l.number);
-              const done = solved.includes(l.number);
-              return (
-                <button
-                  key={l.number}
-                  className={`nav-item ${l.number === level ? "active" : ""}`}
-                  disabled={!open}
-                  onClick={() => pickLevel(l.number)}
-                  title={open ? l.defense : `Beat level ${l.number - 1} to unlock`}
-                >
-                  <span className={`nav-num ${done ? "done" : ""}`}>{done ? <Check size={14} /> : l.number}</span>
-                  <span className="nav-text">{l.name}</span>
-                  {!open && <Lock size={15} className="nav-trail" />}
-                </button>
-              );
-            })}
+            <div className="nav-label">
+              Levels
+              <span className="nav-count">
+                {solvedCount}/{levelCount}
+              </span>
+            </div>
+            <div className="segments" aria-label={`${solvedCount} of ${levelCount} levels broken`}>
+              {levels.map((l) => (
+                <span key={l.number} className={solved.includes(l.number) ? "on" : l.number === level ? "cur" : ""} />
+              ))}
+            </div>
+            <ol className="ladder">
+              {levels.map((l) => {
+                const open = unlocked(l.number);
+                const done = solved.includes(l.number);
+                const state = done ? "done" : open ? "open" : "locked";
+                return (
+                  <li key={l.number} className={state}>
+                    <button
+                      className={`rung ${l.number === level ? "active" : ""}`}
+                      disabled={!open}
+                      onClick={() => pickLevel(l.number)}
+                      title={open ? l.defense : `Beat level ${l.number - 1} to unlock`}
+                    >
+                      <span className="node">{done ? <Check size={14} /> : open ? l.number : <Lock size={13} />}</span>
+                      <span className="rung-text">
+                        <span className="rung-name">{l.name}</span>
+                        <span className="rung-sub">{done ? "Broken" : open ? (l.number === level ? "Playing" : "Unlocked") : "Locked"}</span>
+                      </span>
+                      <Difficulty n={l.number} total={levelCount} />
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
 
           {config && config.quests.length > 0 && (
@@ -297,31 +339,40 @@ export default function Game() {
             <Github size={18} className="nav-icon" />
             <span className="nav-text">Source code</span>
           </a>
-          <div className="progress">
-            <div className="progress-row">
-              <span>Progress</span>
-              <span>
-                {solvedCount} of {levelCount} levels
-              </span>
-            </div>
-            <span className="meter">
-              <span style={{ width: `${(solvedCount / levelCount) * 100}%` }} />
-            </span>
-          </div>
         </div>
       </aside>
       <div className="scrim" onClick={() => setNavOpen(false)} />
 
       {/* --------------------------------------------------------------- main */}
-      <main className="main">
+      <main className={`main ${levelMsgs.length === 0 ? "empty" : ""}`}>
         <header className="topbar">
           <button className="icon-btn only-mobile" onClick={() => setNavOpen(true)} aria-label="Open menu">
             <Menu size={20} />
           </button>
           <div className="topbar-title">
-            <span className="crumb">Level {levelInfo?.number ?? level}</span>
+            <button
+              className="icon-btn step-btn"
+              onClick={() => prevLevel && pickLevel(prevLevel.number)}
+              disabled={!prevLevel}
+              aria-label="Previous level"
+              title="Previous level"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="crumb">
+              Level {level} <span className="crumb-of">of {levelCount}</span>
+            </span>
             <span className="crumb-sep">/</span>
             <span className="crumb-current">{levelInfo?.name || "Loading"}</span>
+            <button
+              className="icon-btn step-btn"
+              onClick={() => nextLevel && pickLevel(nextLevel.number)}
+              disabled={!nextLevel || !unlocked(nextLevel.number)}
+              aria-label="Next level"
+              title={nextLevel && !unlocked(nextLevel.number) ? "Break this level to unlock the next one" : "Next level"}
+            >
+              <ChevronRight size={18} />
+            </button>
           </div>
           <div className="topbar-actions">
             <button className="btn ghost" onClick={reset} disabled={busy} title="Clear this level's chat">
@@ -353,6 +404,12 @@ export default function Game() {
           <div className="column">
             {levelMsgs.length === 0 ? (
               <div className="greeting">
+                <div className="level-badge">
+                  <span>
+                    Level {level} · {levelInfo?.name}
+                  </span>
+                  <Difficulty n={level} total={levelCount} />
+                </div>
                 <h1>Get Ava to leak the vault code.</h1>
                 <p className="greeting-sub">{levelInfo?.defense}</p>
                 <div className="suggestions">
@@ -403,6 +460,31 @@ export default function Game() {
 
         <div className="composer-wrap">
           <div className="action-bar">
+            {levelSolved ? (
+              <div className="solved-bar" role="status">
+                <span className="solved-icon">
+                  <Check size={15} />
+                </span>
+                <span className="solved-text">
+                  {nextLevel ? (
+                    <>
+                      Level {level} broken.<span className="hide-sm"> Level {nextLevel.number} is open.</span>
+                    </>
+                  ) : (
+                    "You broke every level."
+                  )}
+                </span>
+                {nextLevel ? (
+                  <button className="btn primary" onClick={() => pickLevel(nextLevel.number)}>
+                    Next level <ArrowRight size={16} />
+                  </button>
+                ) : (
+                  <button className="btn" onClick={() => setDialog("board")}>
+                    <Trophy size={16} /> Leaderboard
+                  </button>
+                )}
+              </div>
+            ) : (
             <form
               className="code-bar"
               onSubmit={(e) => {
@@ -427,6 +509,7 @@ export default function Game() {
                 Submit
               </button>
             </form>
+            )}
           </div>
           {hintsOpen && <div className="menu-backdrop" onClick={() => setHintsOpen(false)} />}
           {levelInfo && (
@@ -710,6 +793,17 @@ export default function Game() {
         </div>
       )}
     </div>
+  );
+}
+
+// Five bars, one more filled per level.
+function Difficulty({ n, total }: { n: number; total: number }) {
+  return (
+    <span className="diff" title={`Difficulty ${n} of ${total}`} aria-label={`Difficulty ${n} of ${total}`}>
+      {Array.from({ length: total }, (_, i) => (
+        <span key={i} className={i < n ? "on" : ""} />
+      ))}
+    </span>
   );
 }
 
