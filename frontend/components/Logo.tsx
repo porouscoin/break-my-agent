@@ -1,16 +1,14 @@
-// The mark: a shield cracked down the middle. Same drawing as app/icon.svg.
+// The mark: a pair of brackets with the payload slipping out through a gap,
+// which is what prompt injection does. Same drawing as app/icon.svg; in the
+// app it sits on the page with no tile behind it.
 export default function Logo({ size = 24 }: { size?: number }) {
+  const stroke = { fill: "none", stroke: "currentColor", strokeWidth: 2.6, strokeLinecap: "round", strokeLinejoin: "round" } as const;
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <defs>
-        <linearGradient id="bma-logo" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#8B8AFF" />
-          <stop offset="1" stopColor="#5B57E8" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="url(#bma-logo)" />
-      <path d="M16 5.5 L7.5 8.8 V15.2 C7.5 20.6 11 24.6 15.6 26.4 L14.6 21.4 L17 16.6 L14.4 11.6 Z" fill="#fff" />
-      <path d="M17.6 5.9 L25.4 8.9 V15.2 C25.4 20.5 22.1 24.4 17.6 26.3 L16.8 21.6 L19.2 16.8 L16.6 11.9 Z" fill="#fff" fillOpacity=".72" />
+    <svg width={size} height={size} viewBox="4 4 24 24" aria-hidden="true" className="logo">
+      <path d="M12.5 8H9.5v16h3" {...stroke} />
+      <path d="M19.5 8h3v6" {...stroke} />
+      <path d="M22.5 21v3h-3" {...stroke} />
+      <rect x="21" y="15.5" width="5" height="3" rx="1.5" fill="#ff5a36" />
     </svg>
   );
 }
