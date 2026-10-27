@@ -27,10 +27,8 @@ GROQ_CATALOG = {
     "qwen/qwen3.8-27b": ("qwen", "Qwen3.8 27B"),
     "openai/gpt-oss-120b": ("gpt-oss-120b", "GPT-OSS 120B"),
     "openai/gpt-oss-20b": ("gpt-oss-20b", "GPT-OSS 20B"),
-    "moonshotai/kimi-k2-instruct-0905": ("kimi-k2", "Kimi K2"),
-    "meta-llama/llama-4-scout-17b-16e-instruct": ("llama-4-scout", "Llama 4 Scout"),
 }
-DEFAULT_GROQ_MODELS = "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b,moonshotai/kimi-k2-instruct-0905,meta-llama/llama-4-scout-17b-16e-instruct"
+DEFAULT_GROQ_MODELS = "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b"
 
 
 def groq_models() -> list[ModelSpec]:
