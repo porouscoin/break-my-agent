@@ -1,16 +1,17 @@
 "use client";
 
 import type { QuestInfo } from "@/lib/api";
+import { CheckCircle, Circle } from "./Icons";
 
 // CTF-style side flags. They work on any level and stay captured.
 export default function Quests({ quests, done }: { quests: QuestInfo[]; done: string[] }) {
   const count = quests.filter((q) => done.includes(q.id)).length;
   return (
-    <section className="panel quests">
-      <div className="panel-head">
-        <h2>Side quests</h2>
-        <span className="hint">
-          {count} of {quests.length} captured. They work on any level.
+    <div className="quests">
+      <div className="side-label">
+        Side quests
+        <span className="side-count">
+          {count}/{quests.length}
         </span>
       </div>
       <ul>
@@ -18,14 +19,15 @@ export default function Quests({ quests, done }: { quests: QuestInfo[]; done: st
           const got = done.includes(q.id);
           return (
             <li key={q.id} className={got ? "got" : ""}>
-              <span className="flag">{got ? "✓" : "○"}</span>
-              <span>
-                <strong>{q.name}</strong> {got ? q.lesson : q.goal}
+              <span className="quest-icon">{got ? <CheckCircle size={15} /> : <Circle size={15} />}</span>
+              <span className="quest-text">
+                <strong>{q.name}</strong>
+                <span>{got ? q.lesson : q.goal}</span>
               </span>
             </li>
           );
         })}
       </ul>
-    </section>
+    </div>
   );
 }

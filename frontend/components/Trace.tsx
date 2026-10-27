@@ -116,19 +116,27 @@ function Item({ ev }: { ev: TraceEvent }) {
 }
 
 export default function Trace({ turns }: { turns: Turn[] }) {
-  const end = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const el = box.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [turns]);
 
   if (turns.length === 0) {
-    return <p className="hint trace-empty">Send a message and watch each step appear here.</p>;
+    return (
+      <div className="trace-empty">
+        <p className="empty-title">No steps yet</p>
+        <p className="empty-sub">Send Ava a message. Each model call, tool call and guard verdict shows up here as it happens.</p>
+      </div>
+    );
   }
   return (
-    <div className="trace">
+    <div className="trace" ref={box}>
       {turns.map((t, i) => (
         <div key={i} className="turn">
-          <p className="turn-head">&ldquo;{short(t.userText, 90)}&rdquo;</p>
+          <p className="turn-head">
+            <span className="turn-label">You</span> {short(t.userText, 90)}
+          </p>
           <ul>
             {t.events.map((ev, j) => (
               <Item key={j} ev={ev} />
@@ -136,7 +144,6 @@ export default function Trace({ turns }: { turns: Turn[] }) {
           </ul>
         </div>
       ))}
-      <div ref={end} />
     </div>
   );
 }

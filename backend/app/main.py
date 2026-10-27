@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from . import store
 from .config import ModelSpec, env, model_registry, settings
-from .levels import LEVELS, LEVELS_BY_NUMBER, RETIRED_CODE, decoy_code, secret_code
+from .levels import LEVELS, LEVELS_BY_NUMBER, RETIRED_CODE, decoy_code, defenses, secret_code
 from .quests import QUESTS, QUESTS_BY_ID
 from .loop import RunTotals, run_agent
 from .providers import ProviderError, call_model
@@ -80,7 +80,7 @@ async def health():
 async def config():
     return {
         "levels": [
-            {"number": lv.number, "name": lv.name, "defense": lv.defense, "fixed_model": lv.fixed_model}
+            {"number": lv.number, "name": lv.name, "defense": lv.defense, "fixed_model": lv.fixed_model, "defenses": defenses(lv)}
             for lv in available_levels()
         ],
         "models": [{"id": m.id, "label": m.label, "tools": m.supports_tools} for m in MODELS.values() if m.supports_tools],
