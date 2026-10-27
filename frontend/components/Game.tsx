@@ -16,6 +16,7 @@ import {
 import Hints from "./Hints";
 import { ArrowUp, Book, Bulb, Check, FileText, Github, Key, Lock, Mail, Menu, PanelRight, Plus, Pulse, Rotate, Trophy, X } from "./Icons";
 import Logo from "./Logo";
+import Markdown from "./Markdown";
 import Quests from "./Quests";
 import Trace from "./Trace";
 
@@ -399,7 +400,7 @@ export default function Game() {
                     <div key={i} className="msg-ava">
                       <span className="ava-mark">A</span>
                       <div className="ava-body">
-                        <p className={m.blockedBy ? "blocked-text" : ""}>{m.text}</p>
+                        {m.blockedBy ? <p className="blocked-text">{m.text}</p> : <Markdown text={m.text} />}
                         {m.blockedBy && (
                           <span className="caught">
                             <span className="caught-dot" /> Caught by {LAYER_NAMES[m.blockedBy] || m.blockedBy}
@@ -493,6 +494,9 @@ export default function Game() {
                 ) : config?.models.length ? (
                   <label className="model-select">
                     <span className="sr-only">Model</span>
+                    <span className="model-label" aria-hidden="true">
+                      {config.models.find((m) => m.id === model)?.label || "Model"}
+                    </span>
                     <select value={model} onChange={(e) => setModel(e.target.value)}>
                       {config?.models.map((m) => (
                         <option key={m.id} value={m.id}>
