@@ -47,14 +47,16 @@ def trim_history(history: list[dict]) -> list[dict]:
 def _assistant_message(content: str, tool_calls) -> dict:
     msg: dict = {"role": "assistant", "content": content or ""}
     if tool_calls:
-        msg["tool_calls"] = [
-            {
+        msg["tool_calls"] = []
+        for tc in tool_calls:
+            call = {
                 "id": tc.id,
                 "type": "function",
                 "function": {"name": tc.name, "arguments": tc.raw_arguments or json.dumps(tc.arguments)},
             }
-            for tc in tool_calls
-        ]
+            if tc.extra_content:
+                call["extra_content"] = tc.extra_content
+            msg["tool_calls"].append(call)
     return msg
 
 

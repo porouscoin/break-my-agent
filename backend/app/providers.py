@@ -27,6 +27,8 @@ class ToolCall:
     name: str
     arguments: dict[str, Any]
     raw_arguments: str = ""
+    # Gemini 3 attaches a thought signature here and wants it sent back with the call.
+    extra_content: dict[str, Any] | None = None
 
 
 @dataclass
@@ -158,6 +160,7 @@ async def call_model(
             name=tc["function"]["name"],
             arguments=_parse_args(tc["function"].get("arguments", "")),
             raw_arguments=tc["function"].get("arguments", ""),
+            extra_content=tc.get("extra_content"),
         )
         for i, tc in enumerate(message.get("tool_calls") or [])
     ]

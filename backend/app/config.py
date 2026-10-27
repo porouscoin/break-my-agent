@@ -68,13 +68,13 @@ def model_registry() -> dict[str, ModelSpec]:
         ),
         ModelSpec(
             id="gemini",
-            label=env("GEMINI_LABEL", "Gemini 2.5 Flash"),
+            label=env("GEMINI_LABEL", "Gemini 3.5 Flash Lite"),
             provider="gemini",
-            model=env("GEMINI_MODEL", "gemini-2.5-flash"),
+            model=env("GEMINI_MODEL", "gemini-3.5-flash-lite"),
             base_url="https://generativelanguage.googleapis.com/v1beta/openai",
             api_key=env("GEMINI_API_KEY"),
-            usd_per_m_in=float(env("GEMINI_PRICE_IN", "0.30")),
-            usd_per_m_out=float(env("GEMINI_PRICE_OUT", "2.50")),
+            usd_per_m_in=float(env("GEMINI_PRICE_IN", "0.10")),
+            usd_per_m_out=float(env("GEMINI_PRICE_OUT", "0.40")),
         ),
         ModelSpec(
             id="uncensored",
