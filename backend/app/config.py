@@ -88,7 +88,8 @@ def model_registry() -> dict[str, ModelSpec]:
             supports_tools=False,
         ),
     ]
-    specs += groq_models()
+    # Groq models first: the first one is the default, and Groq has the roomiest free tier.
+    specs = groq_models() + specs
     if env("ENABLE_MOCK_MODEL") == "1":
         specs.append(
             ModelSpec(
