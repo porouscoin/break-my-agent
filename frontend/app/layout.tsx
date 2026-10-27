@@ -8,7 +8,7 @@ const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" });
 const description = "A prompt-injection CTF. Get Ava, an AI agent with real tools, to leak a secret through five layers of defenses.";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://break-my-agent-three.vercel.app"),
+  metadataBase: new URL("https://break-my-agent-ctf.vercel.app"),
   title: "Break my agent",
   description,
   applicationName: "Break my agent",
