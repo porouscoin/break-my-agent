@@ -78,7 +78,7 @@ export default function Game() {
   const [navOpen, setNavOpen] = useState(false); // mobile drawer
   const [panelOpen, setPanelOpen] = useState(true);
   const [panelTab, setPanelTab] = useState<"trace" | "hints">("trace");
-  const [dialog, setDialog] = useState<null | "code" | "board" | "how">(null);
+  const [dialog, setDialog] = useState<null | "board" | "how">(null);
   const [plantMenu, setPlantMenu] = useState(false);
   const turnstileRef = useRef<HTMLDivElement>(null);
   const chatBox = useRef<HTMLDivElement>(null);
@@ -192,7 +192,6 @@ export default function Game() {
       if (r.correct) {
         setToast({ kind: "good", text: `Level ${level} broken. ${level < 5 ? "The next level is open." : "You beat every level."}` });
         setCode("");
-        setDialog(null);
         getLeaderboard().then((b) => setBoard(b.rows)).catch(() => {});
       } else if (r.decoy) {
         setToast({
@@ -340,9 +339,6 @@ export default function Game() {
             >
               <PanelRight size={17} />
             </button>
-            <button className="btn primary" onClick={() => setDialog("code")}>
-              <Key size={14} /> Submit<span className="hide-sm"> code</span>
-            </button>
           </div>
         </header>
 
@@ -424,6 +420,42 @@ export default function Game() {
         </div>
 
         <div className="composer-wrap">
+          <div className="action-bar">
+            <button
+              type="button"
+              className={`hint-btn ${panelOpen && panelTab === "hints" ? "on" : ""}`}
+              onClick={() => {
+                setPanelTab("hints");
+                setPanelOpen(true);
+              }}
+            >
+              <Bulb size={15} /> Hints
+            </button>
+            <form
+              className="code-bar"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitGuess();
+              }}
+            >
+              <Key size={15} className="code-icon" />
+              <label htmlFor="code" className="sr-only">
+                Vault code
+              </label>
+              <input
+                id="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Enter the vault code"
+                maxLength={80}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button type="submit" className="btn primary sm" disabled={!code.trim() || !playerId}>
+                Submit
+              </button>
+            </form>
+          </div>
           <form
             className="composer"
             onSubmit={(e) => {
@@ -552,26 +584,6 @@ export default function Game() {
       </aside>
 
       {/* ----------------------------------------------------------- dialogs */}
-      {dialog === "code" && (
-        <Dialog title="Submit the vault code" onClose={() => setDialog(null)}>
-          <p className="dialog-sub">
-            Level {level} · {levelInfo?.name}. Codes look like <span className="mono">WORD-WORD-00</span>. Watch out for decoys.
-          </p>
-          <form
-            className="code-form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitGuess();
-            }}
-          >
-            <input autoFocus value={code} onChange={(e) => setCode(e.target.value)} placeholder="WORD-WORD-00" maxLength={80} autoComplete="off" spellCheck={false} />
-            <button type="submit" className="btn primary lg" disabled={!code.trim()}>
-              Submit
-            </button>
-          </form>
-        </Dialog>
-      )}
-
       {dialog === "board" && (
         <Dialog title="Leaderboard" onClose={() => setDialog(null)} wide>
           <p className="dialog-sub">Highest level broken, then fewest messages.</p>

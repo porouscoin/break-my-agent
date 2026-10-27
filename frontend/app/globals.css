@@ -173,6 +173,28 @@ h1, h2, p { margin: 0; }
 }
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 
+/* action bar: hints and the code box, always next to the composer */
+.action-bar { display: flex; gap: 8px; align-items: stretch; margin-bottom: 8px; }
+.hint-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px; border-radius: 12px; flex: 0 0 auto;
+  border: 1px solid var(--border-2); background: var(--raised); color: var(--text-2); font-size: 13.5px; font-weight: 500;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.hint-btn svg { color: var(--warn); }
+.hint-btn:hover, .hint-btn.on { color: var(--text); background: var(--raised-2); }
+.code-bar {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 4px 0 12px; border-radius: 12px;
+  border: 1px solid var(--border-2); background: var(--raised); transition: border-color .15s;
+}
+.code-bar:focus-within { border-color: rgba(255,255,255,.3); }
+.code-icon { flex: 0 0 auto; color: var(--text-3); }
+.code-bar input {
+  flex: 1; min-width: 0; height: 100%; border: 0; outline: none; background: transparent;
+  font-family: var(--mono); font-size: 13px; letter-spacing: .04em; text-transform: uppercase;
+}
+.code-bar input::placeholder { font-family: var(--sans); letter-spacing: 0; text-transform: none; color: var(--text-3); font-size: 13.5px; }
+.code-bar .btn { height: 32px; border-radius: 9px; }
+
 /* composer */
 .composer-wrap { flex: 0 0 auto; width: min(720px, 100%); margin: 0 auto; padding: 0 24px 12px; }
 .composer {
@@ -341,7 +363,7 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; background: rgba(2
 
 /* toast */
 .toast {
-  position: fixed; left: 50%; bottom: 24px; z-index: 60; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start;
+  position: fixed; left: 50%; top: 68px; z-index: 60; transform: translateX(-50%); display: flex; gap: 10px; align-items: flex-start;
   width: max-content; max-width: min(460px, calc(100vw - 32px)); padding: 11px 12px 11px 14px; border-radius: 12px;
   background: var(--raised-2); border: 1px solid var(--border-2); box-shadow: 0 16px 48px -6px rgba(0,0,0,.6); font-size: 13.5px;
   animation: toast .22s var(--ease);
@@ -354,7 +376,7 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; background: rgba(2
 
 @keyframes fade { from { opacity: 0; } }
 @keyframes pop { from { opacity: 0; transform: scale(.97) translateY(4px); } }
-@keyframes toast { from { opacity: 0; transform: translate(-50%, 8px); } }
+@keyframes toast { from { opacity: 0; transform: translate(-50%, -8px); } }
 
 /* ------------------------------------------------------------- responsive */
 .only-mobile { display: none; }
@@ -379,6 +401,7 @@ th { color: var(--text-3); font-weight: 500; font-size: 12px; background: rgba(2
   .shell.nav-open .scrim { display: block; position: fixed; inset: 0; z-index: 44; background: rgba(0,0,0,.5); animation: fade .15s; }
   .topbar { padding: 0 8px; }
   .hide-sm, .crumb, .crumb-sep { display: none; }
+  .hint-btn { padding: 0 12px; }
   .panel { width: 100vw; }
   .column, .composer-wrap { padding-left: 14px; padding-right: 14px; }
   .greeting { padding-top: 28px; }
