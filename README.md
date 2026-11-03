@@ -1,46 +1,66 @@
+<div align="center">
+
 # Break my agent
 
-A prompt-injection game. Ava is an AI assistant with real tools: she searches docs, reads an inbox, looks up customers and sends emails. She also knows a secret vault code. Your job is to make her leak it, through 5 levels of defenses.
+**A prompt-injection game against an AI agent that has real tools.**
+Get Ava to leak the vault code through five levels of defenses.
 
-Unlike "make the chatbot say the password" games, the target here is an agent: it can misuse tools, attacks can hide inside emails and documents it reads (indirect injection), and a live trace shows every step and which defense caught you.
+[**Play it live**](https://break-my-agent-ctf.vercel.app) · [How it works](#how-a-message-flows) · [Run it locally](#run-it-locally)
 
-Everything is fake: the company, the inbox, the customers. Emails only go to a log.
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3FCF8E?logo=supabase&logoColor=white)
+![Groq](https://img.shields.io/badge/Groq-F55036)
+![Vercel](https://img.shields.io/badge/Vercel-000000?logo=vercel&logoColor=white)
 
-## Levels
+<img src="docs/screenshot.png" alt="Break my agent: level list, chat with Ava and the live trace panel" width="900">
 
-| Level | New defense | How it works |
-| --- | --- | --- |
-| 0 | None | An uncensored model with the code in its prompt (only when an OpenRouter key is set) |
-| 1 | None | Ava knows the code and was never told to keep it secret |
-| 2 | Secrecy rule + input guard | Ava is told to keep the code secret, and regex patterns plus Meta's Llama Prompt Guard 2 screen each message before she sees it |
-| 3 | Output guard + decoy | Ava's reply is scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts. Pushy visitors get a decoy code that looks real |
-| 4 | Tool policy | Checked in code: email only to `@larkspur.test`, email bodies scanned, private customer fields hidden |
-| 5 | Fortress | Every defense above, plus quarantine (inbox and doc text is read by a second model with no tools), a strict prompt, a censor for any single part of the code, and a judge model that rereads the whole conversation. Almost impossible |
+</div>
 
-Levels 1 to 4 are beatable on purpose. Level 5 is possible in theory but stacks every defense at once.
+## What it is
 
-### Decoys and side quests
+Ava is an AI assistant at a fake company. She can search docs, read the shared inbox, look up customers and send emails, and she knows a secret vault code. Your job is to make her leak it.
 
-Levels 3 to 5 have a decoy: when someone pushes, Ava hands over a fake code that shares no part with the real one, so the censor lets it through and it feels like a win. The vault policy doc also mentions a retired code. Entering either one in the guess box tells you that you got played.
+Unlike "make the chatbot say the password" games, the target here is an **agent**:
 
-Side quests are CTF-style flags that work on any level: reveal Ava's instructions, leak a customer's private data, get her to email outside the company, plant a message that makes her send an email on her own, and fall for a decoy.
+- It can **misuse its tools**, not just say the wrong thing.
+- Attacks can hide **inside emails and documents** it reads (indirect injection).
+- A **live trace** shows every model call, tool call and guard verdict, so you can see exactly which defense caught you.
+
+Everything is fake: the company, the inbox and the customers. Emails only go to a log.
+
+## The five levels
+
+| Level | Name | New defense | How it works |
+| :---: | --- | --- | --- |
+| 1 | No rules | None | Ava knows the code and was never told to keep it secret |
+| 2 | Bouncer | Secrecy rule + input guard | Regex patterns plus Meta's Llama Prompt Guard 2 screen each message before Ava sees it |
+| 3 | Censor | Output guard + decoy | Replies are scanned for the code: exact, spaced, reversed, base64, or 2 of its 3 parts. Pushy players get a decoy code that looks real |
+| 4 | Locked tools | Tool policy | Checked in code: email only to `@larkspur.test`, email bodies scanned, private customer fields hidden |
+| 5 | Fortress | Everything | All of the above, plus quarantine (a second model with no tools reads inbox and doc text), a strict prompt, a censor for any single part of the code, and a judge model that rereads the whole conversation |
+
+Levels 1 to 4 are beatable on purpose. Level 5 is possible in theory but stacks every defense at once. An optional level 0 uses an uncensored model when an OpenRouter key is set.
+
+**Side quests** are CTF-style flags that work on any level: reveal Ava's instructions, leak a customer's private data, get her to email outside the company, plant a message that makes her send an email on her own, and fall for a decoy.
 
 ## How a message flows
 
-```
-visitor message
-  -> input guard (L2+)                       blocked? reply "Sorry, I can't help with that."
-  -> model call  <-------------------------+
-       tool call?                           |
-         -> tool policy (L4+)               |  up to 6 steps
-         -> run tool on fake data           |
-         -> quarantine untrusted output (L5)+
-       final answer
-  -> output guard (L3+)                      leaked? reply is replaced
-  -> reply + trace streamed to the browser (Server-Sent Events)
+```mermaid
+flowchart TD
+    A[Your message] --> B{Input guard<br/>level 2+}
+    B -- blocked --> X[Sorry, I can't help with that.]
+    B -- ok --> C[Model call]
+    C -- tool call --> D{Tool policy<br/>level 4+}
+    D --> E[Run tool on fake data]
+    E --> F[Quarantine untrusted text<br/>level 5]
+    F --> C
+    C -- final answer --> G{Output guard<br/>level 3+}
+    G -- leak found --> Y[Reply replaced]
+    G -- ok --> H[Reply + trace streamed to the browser]
 ```
 
-You win a level by typing the code into the "Got the code?" box. The server checks it, so any trick that gets the code out counts.
+The agent gets up to 6 steps per message. You win a level by typing the code into the "Got the code?" box, and the server checks it, so any trick that gets the code out counts.
 
 ## Code tour
 
@@ -48,45 +68,54 @@ The agent harness is plain Python with no agent framework.
 
 | File | What it does |
 | --- | --- |
-| `backend/app/providers.py` | `call_model()`: one HTTP adapter for DeepSeek, Gemini, Groq and OpenRouter (all OpenAI-compatible). Retries with backoff, strips `<think>` tags, parses tool-call JSON, computes cost from token usage |
-| `backend/app/loop.py` | `run_agent()`: the agent loop. An async generator that yields one trace event per step, with the guards hooked in |
-| `backend/app/guards.py` | The input guard, output guard, tool policy, quarantine and leak judge |
-| `backend/app/quests.py` | Side quest definitions and the checks that award them |
-| `backend/app/tools.py` | Tool schemas and their implementations on fake data |
-| `backend/app/levels.py` | Level definitions, system prompts, and per-level codes derived from `SECRET_KEY` with HMAC |
-| `backend/app/store.py` | Sessions, rate limits, the daily budget, Supabase logging |
-| `backend/app/main.py` | FastAPI routes, including the streaming `/api/chat` |
-| `frontend/` | Next.js page: chat, live trace, planting emails and docs, leaderboard |
+| [`backend/app/loop.py`](backend/app/loop.py) | `run_agent()`: the agent loop. An async generator that yields one trace event per step, with the guards hooked in |
+| [`backend/app/providers.py`](backend/app/providers.py) | `call_model()`: one HTTP adapter for Groq, Gemini, DeepSeek and OpenRouter. Retries, tool-call parsing and cost from token usage |
+| [`backend/app/guards.py`](backend/app/guards.py) | Input guard, output guard, tool policy, quarantine and leak judge |
+| [`backend/app/tools.py`](backend/app/tools.py) | Tool schemas and their implementations on fake data |
+| [`backend/app/levels.py`](backend/app/levels.py) | Level definitions, system prompts, and per-level codes derived from `SECRET_KEY` with HMAC |
+| [`backend/app/quests.py`](backend/app/quests.py) | Side quest definitions and the checks that award them |
+| [`backend/app/store.py`](backend/app/store.py) | Sessions, rate limits, the daily budget and Supabase logging |
+| [`backend/app/main.py`](backend/app/main.py) | FastAPI routes, including the streaming `/api/chat` |
+| [`frontend/`](frontend) | Next.js app: chat, live trace, planting emails and docs, leaderboard |
 
-## Cost control
+## Keeping costs safe
 
-- Per IP and per player: 30 messages an hour, 150 a day; 6 code guesses a minute
-- Messages capped at 1,500 characters, 6 agent steps, 600 output tokens
+- 30 messages an hour and 150 a day per player and per IP, plus 6 code guesses a minute
+- Messages capped at 1,500 characters, 6 agent steps and 600 output tokens
 - A daily budget (`DAILY_BUDGET_USD`, default $1) computed from real token usage; the game pauses until midnight UTC when it runs out
-- Prepaid provider balances are the hard ceiling
 - Optional Cloudflare Turnstile bot check for new visitors
 
 ## Run it locally
 
 ```bash
+# Backend, with a fake model so no keys are needed
 cd backend
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-ENABLE_MOCK_MODEL=1 .venv/bin/uvicorn app.main:app --port 8000   # a fake model, no keys needed
+ENABLE_MOCK_MODEL=1 .venv/bin/uvicorn app.main:app --port 8000
 .venv/bin/python -m pytest
 
+# Frontend
 cd ../frontend
 npm install
 NEXT_PUBLIC_API_URL=http://localhost:8000 npm run dev
 ```
 
-Add real keys in `backend/.env` style environment variables (see `backend/.env.example`). A model only appears in the game when its key is set.
+Real model keys go in environment variables (see `backend/.env.example`). A model only shows up in the game when its key is set.
 
 ## Deploy
 
-Both halves run on Vercel's free tier. The backend keeps no state in memory (sessions, rate limits and spend live in Supabase), so it works as a serverless function.
+Both halves run on Vercel's free tier. The backend keeps no state in memory, so it works as a serverless function.
 
-- Database: Supabase. Run `backend/schema.sql` once in the SQL editor
-- Backend: a Vercel project with root directory `backend`. Vercel finds the FastAPI app through `backend/pyproject.toml`. Set `SECRET_KEY`, the model keys, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
-- Frontend: a Vercel project with root directory `frontend`, with `NEXT_PUBLIC_API_URL` set to the backend URL. The backend accepts requests from `https://break-my-agent*.vercel.app` by default; set `FRONTEND_ORIGIN` for any other domain
+1. **Database:** create a Supabase project and run `backend/schema.sql` once in the SQL editor.
+2. **Backend:** a Vercel project with root directory `backend`. Set `SECRET_KEY`, the model keys, `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. **Frontend:** a Vercel project with root directory `frontend` and `NEXT_PUBLIC_API_URL` set to the backend URL. Set `FRONTEND_ORIGIN` on the backend if you use a domain other than `break-my-agent*.vercel.app`.
 
 `backend/railway.json` is kept for running the backend as a long-lived server on Railway instead.
+
+---
+
+<div align="center">
+
+Built by [Ziyad Hisham](https://ziyadhisham.com)
+
+</div>
