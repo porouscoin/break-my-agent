@@ -48,16 +48,16 @@ Levels 1 to 4 are beatable on purpose. Level 5 is possible in theory but stacks 
 
 ```mermaid
 flowchart TD
-    A[Your message] --> B{Input guard<br/>level 2+}
-    B -- blocked --> X[Sorry, I can't help with that.]
-    B -- ok --> C[Model call]
-    C -- tool call --> D{Tool policy<br/>level 4+}
-    D --> E[Run tool on fake data]
-    E --> F[Quarantine untrusted text<br/>level 5]
+    A["Your message"] --> B{"Input guard<br/>level 2 and up"}
+    B -- blocked --> X["Sorry, I can not help with that"]
+    B -- ok --> C["Model call"]
+    C -- tool call --> D{"Tool policy<br/>level 4 and up"}
+    D --> E["Run tool on fake data"]
+    E --> F["Quarantine untrusted text<br/>level 5"]
     F --> C
-    C -- final answer --> G{Output guard<br/>level 3+}
-    G -- leak found --> Y[Reply replaced]
-    G -- ok --> H[Reply + trace streamed to the browser]
+    C -- final answer --> G{"Output guard<br/>level 3 and up"}
+    G -- leak found --> Y["Reply replaced"]
+    G -- ok --> H["Reply and trace streamed to the browser"]
 ```
 
 The agent gets up to 6 steps per message. You win a level by typing the code into the "Got the code?" box, and the server checks it, so any trick that gets the code out counts.
